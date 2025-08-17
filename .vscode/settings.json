@@ -1,0 +1,10 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "[prisma]": {
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true
+  }
+}
