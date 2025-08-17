@@ -147,10 +147,7 @@ describe('PropertiesService', () => {
       expect.objectContaining({ lng: 2, lat: 1, meters: 3000 }),
     );
     // KNN addOrderBy applied
-    expect(qb.addOrderBy).toHaveBeenCalledWith(
-      expect.stringContaining('p.location <-> ST_SetSRID'),
-      'ASC',
-    );
+    expect(qb.addOrderBy).toHaveBeenCalledWith(expect.stringContaining('p.location <-> ST_SetSRID'), 'ASC');
     // Secondary parameters for ordering present
     expect(qb.setParameters).toHaveBeenCalledWith(expect.objectContaining({ lngOrder: 2, latOrder: 1 }));
   });
@@ -164,8 +161,8 @@ describe('PropertiesService', () => {
     const cursor = Buffer.from(uuid, 'utf8').toString('base64url');
     await service.findMany({ cursor, limit: 1 } as any, tenantId);
     // Ensure id filter is applied
-    const calledWithIdFilter = qb.andWhere.mock.calls.some((c: any[]) =>
-      typeof c[0] === 'string' && c[0].includes('p.id > :afterId'),
+    const calledWithIdFilter = qb.andWhere.mock.calls.some(
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('p.id > :afterId'),
     );
     expect(calledWithIdFilter).toBe(true);
   });

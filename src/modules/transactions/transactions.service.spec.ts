@@ -157,8 +157,8 @@ describe('TransactionsService', () => {
     const uuid = '123e4567-e89b-12d3-a456-426614174000';
     const cursor = Buffer.from(uuid, 'utf8').toString('base64url');
     await service.findMany({ cursor, limit: 1 } as any, tenantId);
-    const hasAfter = qb.andWhere.mock.calls.some((c: any[]) =>
-      typeof c[0] === 'string' && c[0].includes('t.id > :afterId'),
+    const hasAfter = qb.andWhere.mock.calls.some(
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('t.id > :afterId'),
     );
     expect(hasAfter).toBe(true);
   });
@@ -169,8 +169,8 @@ describe('TransactionsService', () => {
     (txRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
     await service.findMany({ cursor: 'not-base64url', limit: 1 } as any, tenantId);
-    const hasAfter = qb.andWhere.mock.calls.some((c: any[]) =>
-      typeof c[0] === 'string' && c[0].includes('t.id > :afterId'),
+    const hasAfter = qb.andWhere.mock.calls.some(
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('t.id > :afterId'),
     );
     expect(hasAfter).toBe(false);
   });
