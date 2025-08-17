@@ -3,7 +3,7 @@ import { currentUserFromContext } from './current-user.decorator';
 
 function makeCtx(user?: any): ExecutionContext {
   return {
-    switchToHttp: () => ({ getRequest: () => ({ user }) } as any),
+    switchToHttp: () => ({ getRequest: () => ({ user }) }) as any,
   } as unknown as ExecutionContext;
 }
 
