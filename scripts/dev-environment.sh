@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Start docker compose services in background
 export API_PORT=${API_PORT:-3000}
-export POSTGRES_PORT=${POSTGRES_PORT:-5432}
-export REDIS_PORT=${REDIS_PORT:-6379}
-export RABBITMQ_PORT=${RABBITMQ_PORT:-5672}
-export RABBITMQ_MGMT_PORT=${RABBITMQ_MGMT_PORT:-15672}
+export POSTGRES_PORT=${POSTGRES_PORT:-5449}
+export REDIS_PORT=${REDIS_PORT:-6381}
+export RABBITMQ_PORT=${RABBITMQ_PORT:-5674}
+export RABBITMQ_MGMT_PORT=${RABBITMQ_MGMT_PORT:-15674}
 
 if [ ! -f .env ]; then
   echo "No .env found. Copying defaults from .env.example..."
