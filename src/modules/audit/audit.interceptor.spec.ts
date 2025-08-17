@@ -4,7 +4,12 @@ import { AuditInterceptor } from './audit.interceptor';
 import { AuditService } from './audit.service';
 
 describe('AuditInterceptor', () => {
-  function httpCtx(method: string, url = '/v1/properties/123', body: any = { a: 1 }, params: any = { id: '123' }): ExecutionContext {
+  function httpCtx(
+    method: string,
+    url = '/v1/properties/123',
+    body: any = { a: 1 },
+    params: any = { id: '123' },
+  ): ExecutionContext {
     return {
       getType: () => 'http',
       switchToHttp: () => ({
@@ -35,7 +40,15 @@ describe('AuditInterceptor', () => {
 
     interceptor.intercept(ctx, next).subscribe(() => {
       expect(log).toHaveBeenCalledWith(
-        expect.objectContaining({ method: 'POST', path: '/v1/properties/123', userId: 'u1', tenantId: 't1', entity: 'properties', entityId: '123', after: { a: 1 } }),
+        expect.objectContaining({
+          method: 'POST',
+          path: '/v1/properties/123',
+          userId: 'u1',
+          tenantId: 't1',
+          entity: 'properties',
+          entityId: '123',
+          after: { a: 1 },
+        }),
       );
       done();
     });

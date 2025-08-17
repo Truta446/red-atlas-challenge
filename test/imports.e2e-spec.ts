@@ -45,7 +45,8 @@ describe('Imports (e2e)', () => {
     const builder = Test.createTestingModule({
       controllers: [ImportsController],
       providers: [{ provide: ImportsService, useValue: mockImportsService }],
-    }).overrideGuard(AuthGuard)
+    })
+      .overrideGuard(AuthGuard)
       .useValue(allowAuthGuard);
 
     const moduleFixture: TestingModule = await builder.compile();

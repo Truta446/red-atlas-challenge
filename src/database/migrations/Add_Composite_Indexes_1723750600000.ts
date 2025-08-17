@@ -8,9 +8,7 @@ export class AddCompositeIndexes1723750600000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS idx_props_tenant_sector_type ON properties (tenant_id, sector, type)`,
     );
-    await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_props_tenant_price ON properties (tenant_id, price)`,
-    );
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_props_tenant_price ON properties (tenant_id, price)`);
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS idx_props_tenant_sector_type_price ON properties (tenant_id, sector, type, price)`,
     );

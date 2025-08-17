@@ -23,15 +23,21 @@ describe('AuthService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: getRepositoryToken(User), useValue: {
-          findOne: jest.fn(),
-          create: jest.fn(),
-          save: jest.fn(),
-        } },
-        { provide: JwtService, useValue: {
-          signAsync: jest.fn(),
-          verifyAsync: jest.fn(),
-        } },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            signAsync: jest.fn(),
+            verifyAsync: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -44,7 +50,10 @@ describe('AuthService', () => {
     (users.findOne as jest.Mock).mockResolvedValue(null);
     (users.create as jest.Mock).mockImplementation((u: Partial<User>) => ({ id: 'u1', ...u }));
     let saved = 0;
-    (users.save as jest.Mock).mockImplementation(async (u: any) => { saved++; return { ...u, id: u.id || 'u1' }; });
+    (users.save as jest.Mock).mockImplementation(async (u: any) => {
+      saved++;
+      return { ...u, id: u.id || 'u1' };
+    });
     (jwt.signAsync as jest.Mock).mockResolvedValueOnce('access').mockResolvedValueOnce('refresh');
 
     const res = await service.register('a@b.com', 'pw', 't1');
@@ -61,7 +70,13 @@ describe('AuthService', () => {
   });
 
   it('login succeeds with valid credentials', async () => {
-    (users.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'a@b.com', role: 'user', tenantId: 't', passwordHash: 'ok' });
+    (users.findOne as jest.Mock).mockResolvedValue({
+      id: 'u1',
+      email: 'a@b.com',
+      role: 'user',
+      tenantId: 't',
+      passwordHash: 'ok',
+    });
     // Ensure the password check passes regardless of the underlying mock implementation
     (verifyPassword as jest.Mock).mockResolvedValue(true);
     (jwt.signAsync as jest.Mock).mockResolvedValueOnce('a').mockResolvedValueOnce('r');
@@ -72,7 +87,13 @@ describe('AuthService', () => {
   });
 
   it('login fails with invalid password', async () => {
-    (users.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'a@b.com', role: 'user', tenantId: 't', passwordHash: 'ok' });
+    (users.findOne as jest.Mock).mockResolvedValue({
+      id: 'u1',
+      email: 'a@b.com',
+      role: 'user',
+      tenantId: 't',
+      passwordHash: 'ok',
+    });
     // verifyPassword mocked returns true only for pw==='pw'; pass different
     await expect(service.login('a@b.com', 'bad')).rejects.toBeInstanceOf(UnauthorizedException);
   });
@@ -84,7 +105,13 @@ describe('AuthService', () => {
     const crypto = require('crypto');
     const rt = 'refresh-token';
     const hash = crypto.createHash('sha256').update(rt).digest('hex');
-    (users.findOne as jest.Mock).mockResolvedValue({ id: 'u1', email: 'a@b.com', tenantId: 't', role: 'user', refreshTokenHash: hash });
+    (users.findOne as jest.Mock).mockResolvedValue({
+      id: 'u1',
+      email: 'a@b.com',
+      tenantId: 't',
+      role: 'user',
+      refreshTokenHash: hash,
+    });
     (jwt.signAsync as jest.Mock).mockResolvedValueOnce('new-access').mockResolvedValueOnce('new-refresh');
 
     const res = await service.rotateRefresh(rt);

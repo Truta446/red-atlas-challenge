@@ -36,19 +36,28 @@ describe('TransactionsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionsService,
-        { provide: getRepositoryToken(Transaction), useValue: {
-          createQueryBuilder: jest.fn(),
-          findOne: jest.fn(),
-          update: jest.fn(),
-          softDelete: jest.fn(),
-          restore: jest.fn(),
-        } },
-        { provide: getRepositoryToken(Property), useValue: {
-          findOne: jest.fn(),
-        } },
-        { provide: getRepositoryToken(Listing), useValue: {
-          findOne: jest.fn(),
-        } },
+        {
+          provide: getRepositoryToken(Transaction),
+          useValue: {
+            createQueryBuilder: jest.fn(),
+            findOne: jest.fn(),
+            update: jest.fn(),
+            softDelete: jest.fn(),
+            restore: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Property),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Listing),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -74,7 +83,10 @@ describe('TransactionsService', () => {
 
     txRepo.findOne = jest.fn().mockResolvedValue({ id: 'tx1', tenantId } as any);
 
-    const created = await service.create({ propertyId: 'prop1', listingId: 'list1', price: 500, date: '2025-01-01' } as any, tenantId);
+    const created = await service.create(
+      { propertyId: 'prop1', listingId: 'list1', price: 500, date: '2025-01-01' } as any,
+      tenantId,
+    );
     expect(created).toEqual(expect.objectContaining({ id: 'tx1' }));
     expect(propRepo.findOne).toHaveBeenCalledWith({ where: { id: 'prop1', tenantId } });
     expect(listRepo.findOne).toHaveBeenCalledWith({ where: { id: 'list1', tenantId } });
@@ -82,9 +94,9 @@ describe('TransactionsService', () => {
 
   it('throws on create if property not found for tenant', async () => {
     propRepo.findOne.mockResolvedValue(null);
-    await expect(
-      service.create({ propertyId: 'nope', price: 1, date: '2025-01-01' } as any, tenantId),
-    ).rejects.toThrow('Property not found for tenant');
+    await expect(service.create({ propertyId: 'nope', price: 1, date: '2025-01-01' } as any, tenantId)).rejects.toThrow(
+      'Property not found for tenant',
+    );
   });
 
   it('throws on create if listing provided but not found for tenant', async () => {
@@ -105,7 +117,10 @@ describe('TransactionsService', () => {
     (txRepo.update as any) = jest.fn().mockResolvedValue({});
     (service.findOne as any) = jest.fn().mockResolvedValue({ id: 'A', price: 1 } as any);
     const res = await service.update('A', { price: 300, date: '2025-02-02' } as any, tenantId);
-    expect(txRepo.update).toHaveBeenCalledWith({ id: 'A', tenantId }, expect.objectContaining({ price: 300, date: '2025-02-02' }));
+    expect(txRepo.update).toHaveBeenCalledWith(
+      { id: 'A', tenantId },
+      expect.objectContaining({ price: 300, date: '2025-02-02' }),
+    );
     expect(res).toBeTruthy();
   });
 
@@ -125,7 +140,7 @@ describe('TransactionsService', () => {
 
   it('findMany builds query and returns items with nextCursor', async () => {
     const qb = createQB({});
-    const rows = Array.from({ length: 3 }).map((_, i) => ({ id: `id${i+1}` } as any));
+    const rows = Array.from({ length: 3 }).map((_, i) => ({ id: `id${i + 1}` }) as any);
     qb.getMany.mockResolvedValue(rows);
     (txRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 

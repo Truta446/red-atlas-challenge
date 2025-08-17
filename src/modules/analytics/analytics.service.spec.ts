@@ -10,10 +10,7 @@ describe('AnalyticsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AnalyticsService,
-        { provide: getRepositoryToken(Property), useValue: repo },
-      ],
+      providers: [AnalyticsService, { provide: getRepositoryToken(Property), useValue: repo }],
     }).compile();
 
     service = module.get(AnalyticsService);

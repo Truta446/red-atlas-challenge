@@ -14,10 +14,7 @@ describe('ImportsRmqTopology', () => {
 
   it('skips when RABBITMQ_URL is missing', async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [
-        ImportsRmqTopology,
-        { provide: ConfigService, useValue: { get: () => undefined } },
-      ],
+      providers: [ImportsRmqTopology, { provide: ConfigService, useValue: { get: () => undefined } }],
     }).compile();
 
     const topo = moduleRef.get(ImportsRmqTopology);
@@ -36,10 +33,7 @@ describe('ImportsRmqTopology', () => {
     });
 
     const moduleRef = await Test.createTestingModule({
-      providers: [
-        ImportsRmqTopology,
-        { provide: ConfigService, useValue: { get: () => 'amqp://localhost' } },
-      ],
+      providers: [ImportsRmqTopology, { provide: ConfigService, useValue: { get: () => 'amqp://localhost' } }],
     }).compile();
 
     const topo = moduleRef.get(ImportsRmqTopology);

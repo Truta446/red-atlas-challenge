@@ -35,16 +35,22 @@ describe('ListingsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ListingsService,
-        { provide: getRepositoryToken(Listing), useValue: {
-          createQueryBuilder: jest.fn(),
-          findOne: jest.fn(),
-          update: jest.fn(),
-          softDelete: jest.fn(),
-          restore: jest.fn(),
-        } },
-        { provide: getRepositoryToken(Property), useValue: {
-          findOne: jest.fn(),
-        } },
+        {
+          provide: getRepositoryToken(Listing),
+          useValue: {
+            createQueryBuilder: jest.fn(),
+            findOne: jest.fn(),
+            update: jest.fn(),
+            softDelete: jest.fn(),
+            restore: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Property),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -75,9 +81,9 @@ describe('ListingsService', () => {
 
   it('throws on create if property not found for tenant', async () => {
     propRepo.findOne.mockResolvedValue(null);
-    await expect(
-      service.create({ propertyId: 'pX', status: 'active', price: 10 } as any, tenantId),
-    ).rejects.toThrow('Property not found for tenant');
+    await expect(service.create({ propertyId: 'pX', status: 'active', price: 10 } as any, tenantId)).rejects.toThrow(
+      'Property not found for tenant',
+    );
   });
 
   it('findOne returns entity for tenant', async () => {
@@ -90,7 +96,10 @@ describe('ListingsService', () => {
     (listingRepo.update as any) = jest.fn().mockResolvedValue({});
     (service.findOne as any) = jest.fn().mockResolvedValue({ id: 'A', status: 'inactive', price: 200 } as any);
     const res = await service.update('A', { status: 'active', price: 300 } as any, tenantId);
-    expect(listingRepo.update).toHaveBeenCalledWith({ id: 'A', tenantId }, expect.objectContaining({ status: 'active', price: 300 }));
+    expect(listingRepo.update).toHaveBeenCalledWith(
+      { id: 'A', tenantId },
+      expect.objectContaining({ status: 'active', price: 300 }),
+    );
     expect(res).toBeTruthy();
   });
 
@@ -110,7 +119,7 @@ describe('ListingsService', () => {
 
   it('findMany builds query and returns items with nextCursor', async () => {
     const qb = createQB({});
-    const rows = Array.from({ length: 3 }).map((_, i) => ({ id: `id${i+1}` } as any));
+    const rows = Array.from({ length: 3 }).map((_, i) => ({ id: `id${i + 1}` }) as any);
     qb.getMany.mockResolvedValue(rows);
     (listingRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 

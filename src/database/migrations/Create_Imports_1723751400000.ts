@@ -19,7 +19,9 @@ export class CreateImports1723751400000 implements MigrationInterface {
       );
     `);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_imports_tenant ON imports (tenant_id)`);
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_imports_tenant_key ON imports (tenant_id, idempotency_key)`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS ux_imports_tenant_key ON imports (tenant_id, idempotency_key)`,
+    );
     // trigger to auto-update updated_at
     await queryRunner.query(`
       CREATE OR REPLACE FUNCTION set_updated_at()

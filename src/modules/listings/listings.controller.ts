@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Inject, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import type { CurrentUserPayload } from '../auth/current-user.decorator';
@@ -30,10 +43,7 @@ export class ListingsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Roles('admin', 'user')
-  public async create(
-    @Body() dto: CreateListingDto,
-    @CurrentUser() user: CurrentUserPayload,
-  ): Promise<Listing> {
+  public async create(@Body() dto: CreateListingDto, @CurrentUser() user: CurrentUserPayload): Promise<Listing> {
     return this.service.create(dto, user.tenantId);
   }
 

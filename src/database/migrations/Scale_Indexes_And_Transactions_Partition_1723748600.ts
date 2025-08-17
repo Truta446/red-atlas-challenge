@@ -5,15 +5,21 @@ export class ScaleIndexesAndTransactionsPartition1723748600000 implements Migrat
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1) Indexes for properties
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_prop_tenant_sector_type ON properties (tenant_id, sector, type)`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_prop_tenant_sector_type ON properties (tenant_id, sector, type)`,
+    );
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_prop_tenant_price ON properties (tenant_id, price, id)`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_prop_tenant_created ON properties (tenant_id, created_at, id)`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_prop_tenant_created ON properties (tenant_id, created_at, id)`,
+    );
 
     // 2) Indexes for listings
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_list_tenant_status ON listings (tenant_id, status, id)`);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_list_property ON listings (propertyid)`);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_list_tenant_price ON listings (tenant_id, price, id)`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_list_tenant_created ON listings (tenant_id, created_at, id)`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_list_tenant_created ON listings (tenant_id, created_at, id)`,
+    );
 
     // 3) Prepare partitioned table for transactions
     // Create new partitioned parent table

@@ -33,7 +33,9 @@ describe('ImportsController', () => {
 
   it('create rejects when Idempotency-Key is missing', async () => {
     const req: any = { headers: { 'content-type': 'text/csv' }, raw: Readable.from(['a,b\n']) };
-    await expect(controller.create(req, undefined as any, tenantUser)).rejects.toThrow('Missing Idempotency-Key header');
+    await expect(controller.create(req, undefined as any, tenantUser)).rejects.toThrow(
+      'Missing Idempotency-Key header',
+    );
     expect(service.enqueueImport).not.toHaveBeenCalled();
   });
 

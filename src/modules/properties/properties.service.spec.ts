@@ -43,12 +43,15 @@ describe('PropertiesService', () => {
       providers: [
         PropertiesService,
         { provide: CACHE_MANAGER, useValue: cache },
-        { provide: getRepositoryToken(Property), useValue: {
-          createQueryBuilder: jest.fn(),
-          softDelete: jest.fn(),
-          restore: jest.fn(),
-          findOne: jest.fn(),
-        } },
+        {
+          provide: getRepositoryToken(Property),
+          useValue: {
+            createQueryBuilder: jest.fn(),
+            softDelete: jest.fn(),
+            restore: jest.fn(),
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
