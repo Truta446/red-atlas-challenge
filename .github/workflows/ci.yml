@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop, feature/** ]
+  pull_request:
+    branches: [ "**" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check / build
+        run: npm run build
+
+      - name: Lint (Prettier)
+        run: npm run lint:prettier:check
+
+      - name: Lint (ESLint)
+        run: npm run lint:eslint:check
+
+      - name: Run unit tests (with dockerized dev env)
+        env:
+          API_PORT: 3000
+          POSTGRES_PORT: 5449
+          REDIS_PORT: 6381
+          RABBITMQ_PORT: 5674
+          RABBITMQ_MGMT_PORT: 15674
+        run: npm test -- --coverage
+
+      - name: Run controller-only E2E tests (no Docker)
+        run: npm run test:e2e
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: ignore
