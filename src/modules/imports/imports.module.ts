@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ImportJob } from './import-job.entity';
-import { ImportsService } from './imports.service';
-import { ImportsController } from './imports.controller';
-import { Property } from '../properties/property.entity';
-import { ImportsConsumer } from './imports.consumer';
-import { ImportProcessedBatch } from './processed-batch.entity';
-import { ImportsRmqTopology } from './rmq.topology.provider';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { MetricsModule } from '../metrics/metrics.module';
+import { Property } from '../properties/entities/property.entity';
+import { ImportsConsumer } from './controllers/imports.consumer';
+import { ImportsController } from './controllers/imports.controller';
+import { ImportJob } from './entities/import-job.entity';
+import { ImportProcessedBatch } from './entities/processed-batch.entity';
+import { ImportsService } from './services/imports.service';
+import { ImportsRmqTopology } from './services/rmq.topology.provider';
 
 @Module({
   imports: [

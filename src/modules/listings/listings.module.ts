@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Listing } from './listing.entity';
-import { ListingsService } from './listings.service';
-import { ListingsController } from './listings.controller';
-import { Property } from '../properties/property.entity';
+
+import { Property } from '../properties/entities/property.entity';
+import { ListingsController } from './controllers/listings.controller';
+import { Listing } from './entities/listing.entity';
+import { ListingsService } from './services/listings.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Listing, Property])],

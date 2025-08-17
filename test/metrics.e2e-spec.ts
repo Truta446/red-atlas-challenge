@@ -1,9 +1,10 @@
 import { INestApplication, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthGuard } from '../src/modules/auth/auth.guard';
-import { MetricsService } from '../src/modules/metrics/metrics.service';
-import { MetricsController } from '../src/modules/metrics/metrics.controller';
+
+import { AuthGuard } from '../src/modules/auth/guards/auth.guard';
+import { MetricsController } from '../src/modules/metrics/controllers/metrics.controller';
+import { MetricsService } from '../src/modules/metrics/services/metrics.service';
 
 const allowAuthGuard = {
   canActivate: (context: any) => {

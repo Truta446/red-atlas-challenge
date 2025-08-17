@@ -3,20 +3,20 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheableMemory } from 'cacheable';
 import { Keyv } from 'keyv';
-
-import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
-import { MetricsModule } from './modules/metrics/metrics.module';
-import { MetricsInterceptor } from './modules/metrics/metrics.interceptor';
+
 import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { AuditInterceptor } from './modules/audit/audit.interceptor';
 import { AuditModule } from './modules/audit/audit.module';
+import { AuditInterceptor } from './modules/audit/services/audit.interceptor';
 import { AuthModule } from './modules/auth/auth.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { ListingsModule } from './modules/listings/listings.module';
+import { MetricsInterceptor } from './modules/metrics/interceptors/metrics.interceptor';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 
@@ -25,7 +25,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
-        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        level: 'info',
         redact: {
           paths: ['req.headers.authorization', 'req.headers.cookie', 'password'],
           censor: '[Redacted]',

@@ -1,409 +1,228 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Red Atlas — Real Estate API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-NestJS backend for real estate management powered by PostgreSQL + PostGIS, TypeORM, Redis, and RabbitMQ. It implements JWT authentication (with refresh rotation), multi-tenancy, advanced CRUD for `Properties`, `Listings`, and `Transactions` with soft delete/restore, strong validation, advanced filtering, cursor pagination, geospatial KNN ordering, and asynchronous CSV import via RabbitMQ.
-
-Key capabilities:
-
-- Multi-tenancy via `tenant_id` enforced in authorization and queries.
-- Soft delete and restore (`deleted_at`).
-- Validation using `class-validator` + transformation via `class-transformer`.
-- Normalized errors and guards (`AuthGuard`, `RolesGuard`).
-- Combined filtering, cursor pagination, Redis cache.
-- Geospatial distance ordering using PostGIS `<->` when requested.
-- Massive CSV async import via RabbitMQ (dedicated workers).
-- Idempotent massive seed (100k+ properties, 200k listings, 150k transactions).
-
-Useful links:
-
-- NestJS: https://docs.nestjs.com
-- TypeORM: https://typeorm.io
-- PostgreSQL/PostGIS: https://postgis.net
-- RabbitMQ: https://www.rabbitmq.com
-- Redis: https://redis.io
-- Autocannon (load testing): https://github.com/mcollina/autocannon
+Backend API for real estate management at Red Atlas. Built with NestJS (Fastify), PostgreSQL + PostGIS, TypeORM, Redis and RabbitMQ. Implements JWT auth with refresh rotation, multi-tenancy, advanced CRUD (Properties, Listings, Transactions), cursor pagination, geospatial queries, caching, and asynchronous CSV imports.
 
 ---
 
-## Architecture and Modules
+## 1) Local setup
 
-- `src/modules/auth/`: JWT, refresh rotation, roles (user/admin), and `@CurrentUser` decorator.
-- `src/modules/properties/`: Advanced CRUD, filters, pagination, cache, and KNN ordering by distance on demand.
-- `src/modules/listings/`: Advanced listings CRUD (multi-tenant, soft delete/restore).
-- `src/modules/transactions/`: Advanced transactions CRUD with date/price filters.
-- `src/modules/imports/`: Async CSV import pipeline via RabbitMQ (upload controller + worker consumer).
-- `src/database/`: TypeORM DataSource, migrations, and indexes (including GiST for geography).
-- `src/common/`: utilities and base entity with common fields (tenant, soft delete, timestamps).
+- Requirements
+  - Node.js 22+
+  - Docker and Docker Compose
+- Clone and install
+  ```bash
+  git clone <repo>
+  cd red-atlas-challenge
+  npm ci
+  ```
+- Environment variables: copy `.env.example` to `.env` and fill values (see next section).
 
-Performance decisions:
+### Environment (.env)
+Required/Relevant variables:
+- DATABASE_URL or POSTGRES_HOST/POSTGRES_PORT/POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB
+- REDIS_URL
+- RABBITMQ_URL
+- ACCESS_TOKEN_SECRET, ACCESS_TOKEN_TTL (e.g., `15m`)
+- REFRESH_TOKEN_SECRET, REFRESH_TOKEN_TTL (e.g., `7d`)
+- DEFAULT_TENANT (fallback tenant id for local/dev)
+- API_PORT (default: 3000)
 
-- TypeORM pool increased to 50 connections.
-- Fastify compression with `threshold` 10kB.
-- Node cluster: multi-CPU launcher.
-- Composite indexes for frequent filters and GiST on `location::geography`.
+Example:
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/redatlas
+REDIS_URL=redis://localhost:6379
+RABBITMQ_URL=amqp://localhost:5672
+ACCESS_TOKEN_SECRET=change-me
+ACCESS_TOKEN_TTL=15m
+REFRESH_TOKEN_SECRET=change-me-too
+REFRESH_TOKEN_TTL=7d
+DEFAULT_TENANT=tenant-local
+API_PORT=3000
+```
 
----
-
-## Requirements
-
-- Node.js 22+
-- Docker and Docker Compose
-
----
-
-## Configuration (.env)
-
-Copy `.env.example` to `.env` and adjust accordingly.
-
-Relevant variables:
-
-- `DATABASE_URL` or `POSTGRES_*` (host, port, user, pass, db)
-- `REDIS_URL`
-- `RABBITMQ_URL`
-- `JWT_SECRET`, `JWT_REFRESH_SECRET`
-
----
-
-## Bring up infrastructure and app
-
-Using Docker Compose (recommended):
-
+### Bring up infrastructure + API (Docker)
 ```bash
+# start postgres (with postgis), redis and rabbitmq and build images
 docker compose up -d --build
 
-# run migrations
+# run DB migrations
 npm run migration:run
 
-# start API in watch mode
+# start API (watch mode)
 npm run start:api
 
-# start CSV import worker (dev)
+# optional: start import worker (CSV imports)
 npm run start:worker:imports
 ```
 
-RabbitMQ topology (queues):
-
-- `imports.batch` (main) → DLX to `imports.retry.10s`
-- `imports.retry.10s` (TTL 10s) → DLX to `imports.batch`
-- `imports.retry.60s` (TTL 60s) → DLX to `imports.batch` (available for future backoff tiers)
-- `imports.batch.dlq` (dead-letter)
-
-Retries/backoff:
-
-- Consumer reads `x-death` header and nacks with requeue=false for controlled backoff.
-- After max attempts, message is copied to DLQ and acked (metrics labeled as `dlq`).
-
-Local (without Docker) — ensure Postgres+PostGIS, Redis, RabbitMQ are running and `.env` is configured:
-
+Local (without Docker): ensure Postgres+PostGIS, Redis, RabbitMQ are running and `.env` is configured, then:
 ```bash
-npm ci
 npm run build
 npm run migration:run
 npm run start:api
 ```
 
-Cluster (production):
+---
 
-```bash
-npm run build
-npm run start:cluster     # uses dist/src/cluster.js
-```
+## 2) Migrations and seed
+
+- Generate/Run/Revert migrations:
+  ```bash
+  npm run migration:generate
+  npm run migration:run
+  npm run migration:revert
+  ```
+- Seed dataset (idempotent, large dataset; docker-aware):
+  ```bash
+  npm run seed:docker
+  ```
 
 ---
 
-## Useful scripts (package.json)
+## 3) Architecture and modules (high level)
+
+- `auth/` — JWT access + refresh rotation, roles (user/admin), multi-tenant enforcement.
+- `properties/`, `listings/`, `transactions/` — CRUD, soft delete/restore, advanced filters and cursor pagination.
+- `imports/` — CSV import via RabbitMQ (API publishes; worker consumes in batches; retries + DLQ).
+- `common/` — utilities, interceptors, cache, tracing.
+- `database/` — entities, migrations, indexes (GiST for geo), partitions (transactions planned).
+
+OpenAPI/Swagger: available at `/docs` (Bearer auth). Prefix for API routes: `/v1`.
+
+---
+
+## 4) Caching and invalidation strategy
+
+- Read-through cache via Redis for selected GET endpoints (e.g., `GET /v1/properties`).
+- Cache key: `tenant:{tenantId}:query:{normalizedQuery}:v{cacheVersion}`
+  - `normalizedQuery` = parâmetros ordenados + serializados (para idempotência de cache)
+- TTL configurável por endpoint (default seguro em minutos).
+- Invalidação:
+  - On write (create/update/delete/restore) do recurso afetado: remoção por prefixo do tenant.
+  - Bump global `cacheVersion` para invalidar em mudanças estruturais.
+
+---
+
+## 5) Performance — como validar (inclui métricas)
+
+- Load testing (autocannon):
+  ```bash
+  # instalar
+  npm i -g autocannon
+
+  # exemplo: GET /v1/properties com filtros e paginação
+  autocannon -c 200 -d 30 -p 10 \
+    -H "authorization: Bearer $TOKEN" \
+    "http://localhost:${API_PORT:-3000}/v1/properties?limit=25&order=desc&sector=central"
+  ```
+- SLOs (alvo com dataset de referência):
+  - GET /v1/properties p95 ≤ 800ms (sem cache)
+  - GET /v1/properties p95 ≤ 300ms (cache aquecido)
+  - Error rate ≤ 1%
+- Métricas (Prometheus):
+  - Expostas em texto no endpoint `/v1/metrics` (content-type Prometheus `text/plain; version=0.0.4`).
+  - Inclui contadores de requisição, latência (histogram), erros, métricas de import (sucesso/retry/dlq).
+  - Consumo: `curl http://localhost:${API_PORT:-3000}/v1/metrics`
+
+Dicas:
+- Use `npm run start:cluster` em produção para multi-CPU.
+- Monitore Postgres (latência média e planos de execução). Índices: GiST em `location::geography`, compostos para filtros mais frequentes.
+
+---
+
+## 6) Segurança — Checklist OWASP aplicado
+
+- Autenticação/JWT
+  - Access + Refresh com rotação e invalidação de refresh comprometido (hash em DB).
+  - TTLs explícitos; segredos via env.
+- Autorização
+  - RBAC (user/admin) e escopo estrito por `tenantId` em todas as consultas.
+- Validação e saneamento
+  - DTOs com `class-validator` + `class-transformer` (query/body/params), tipos fortes.
+- Transporte e cabeçalhos de segurança
+  - Helmet habilitado (CSP, X-Frame-Options, X-Content-Type-Options, etc.).
+  - CORS configurado (restringir em prod para os domínios da Red Atlas).
+- CSRF
+  - Proteção habilitada para rotas que exigirem (em APIs REST públicas, preferir Bearer + idempotência).
+- Armazenamento seguro e segredos
+  - Segredos apenas em env/secret manager; nunca em repositório.
+  - Hash de senhas e comparação timing-safe.
+- Logs e privacidade
+  - Sem dados sensíveis nos logs; correlação de requisições (correlation-id).
+- Injeção/SQLi
+  - Query builder/params tipados pelo TypeORM; sem concatenação de strings.
+- Rate limiting / DoS
+  - Suportado via ingress/API gateway; documentado para produção.
+- Dependências e atualizações
+  - `npm audit` e CI; versões com pinagem quando necessário.
+
+---
+
+## 7) Endpoints principais (resumo)
+
+Prefixo `/v1`. Exigem `Authorization: Bearer <token>`.
+- Properties: `GET /properties`, `POST /properties`, `GET/PUT/PATCH/DELETE /properties/:id`, `PATCH /properties/:id/restore`
+- Listings: `GET /listings`, `POST /listings`, `GET/PUT/PATCH/DELETE /listings/:id`, `PATCH /listings/:id/restore`
+- Transactions: `GET /transactions`, `POST /transactions`, `GET/PATCH/DELETE /transactions/:id`, `PATCH /transactions/:id/restore`
+- Imports (CSV): `POST /imports`
+- Métricas: `GET /metrics` (versionado em `/v1/metrics`)
+
+---
+
+## 8) Scripts úteis
 
 ```bash
-# build app + scripts TS (if applicable)
+# build / start
 npm run build
-npm run build:full
-
-# start
-npm run start            # dev helper script
-npm run start:api        # Nest watch
-npm run start:prod       # node dist/src/main
-npm run start:cluster    # cluster in production
+npm run start:api
+npm run start:prod
+npm run start:cluster
 
 # workers
-npm run start:worker:imports       # TS
-npm run start:worker:imports:prod  # compiled JS
+npm run start:worker:imports
+npm run start:worker:imports:prod
 
 # migrations
 npm run migration:generate
 npm run migration:run
 npm run migration:revert
 
-# seed (docker) — uses dist/seed.js and compose host/port
+# seed (docker)
 npm run seed:docker
-
-# lint
-npm run lint:prettier:check
-npm run lint:prettier:fix
-npm run lint:eslint:check
-npm run lint:eslint:fix
 
 # tests
 npm run test
 npm run test:watch
 npm run test:cov
 
-# utility
-npm run csv:gen          # generate massive CSV for import
+# utilitário CSV
+npm run csv:gen
 ```
 
 ---
 
-## Main endpoints
+## 9) Docker cleanup e restart (fresh setup)
 
-Prefix: `/v1`
-
-- Auth (example; verify routes in the auth module)
-  - `POST /auth/login` → token + refresh
-  - `POST /auth/refresh` → refresh rotation
-
-- Properties
-  - `GET /properties` — filters, cursor, ordering (distance when requested)
-  - `POST /properties` — create (201)
-  - `GET /properties/:id`
-  - `PATCH /properties/:id`
-  - `DELETE /properties/:id` — soft delete (204)
-  - `PATCH /properties/:id/restore` — restore
-
-- Listings
-  - `GET /listings` — filters by `status`, `propertyId`, price range, cursor
-  - `POST /listings`
-  - `GET /listings/:id`
-  - `PATCH /listings/:id`
-  - `DELETE /listings/:id` — soft delete
-  - `PATCH /listings/:id/restore`
-
-- Transactions
-  - `GET /transactions` — filters by `propertyId`, `listingId`, price and date ranges, cursor
-  - `POST /transactions`
-  - `GET /transactions/:id`
-  - `PATCH /transactions/:id`
-  - `DELETE /transactions/:id` — soft delete
-  - `PATCH /transactions/:id/restore`
-
-- Imports (CSV)
-  - `POST /imports` — accepts `text/csv`; returns `202 Accepted` and a jobId
-
-All protected routes require `Authorization: Bearer <token>` and apply the user's `tenantId`.
-
-OpenAPI/Swagger: the project uses `@nestjs/swagger`. The docs are exposed at `/docs` with Bearer auth (JWT). Import the JWT in the authorize dialog to try protected endpoints.
-
-Security scheme:
-
-- Type: HTTP Bearer
-- Header: `Authorization: Bearer <token>`
-
----
-
-## Asynchronous CSV import (RabbitMQ)
-
-Pipeline:
-
-1. API receives the upload (`text/csv`) and publishes jobs to the queue.
-2. Worker (`start:worker:imports`) consumes and processes batches (streaming + upsert/idempotency).
-3. Job status is exposed by the API (see imports module).
-
-Usage (example):
-
+Para recriar tudo do zero (containers, volumes e imagens do projeto):
 ```bash
-# generate a test CSV
-npm run csv:gen -- --rows 100000 --out /tmp/import.csv
+# parar e remover containers/volumes do compose atual
+docker compose down -v
 
-# send to API
-curl -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: text/csv" \
-  --data-binary @/tmp/import.csv \
-  http://localhost:3000/v1/imports
+# remover imagens do projeto (ajuste o prefixo, se necessário)
+docker images | awk '/red-atlas|red_atlas|redatlas/ { print $3 }' | xargs -r docker rmi -f
+
+# remover volumes/redes órfãos (opcional)
+docker volume prune -f
+docker network prune -f
+
+# subir novamente
+docker compose up -d --build
+npm run migration:run
+npm run start:api
 ```
 
 ---
 
-## Multi-tenancy, validation and soft delete
-
-- All queries are scoped by the token's `tenantId`.
-- DTOs use `class-validator` and `class-transformer` (including queries: `QueryPropertiesDto`, `QueryListingsDto`, `QueryTransactionsDto`).
-- Soft delete/restore implemented in `Properties`, `Listings`, `Transactions`.
-
----
-
-## Indexes, Geo and Performance
-
-- GiST on `location::geography` for queries and distance ordering (KNN `<->`).
-- Composite indexes for filters (e.g., `(tenant_id, sector, type, price)`).
-- Redis cache (e.g., `GET /v1/properties`) with `CacheInterceptor` + TTL.
-- TypeORM pool: 50 connections.
-- Fastify compression threshold: 10kB.
-- Node.js cluster for multi-CPU.
-
-Scale to 1M+ records:
-
-- Monthly partitioning on `transactions` (plan suggested in internal migrations notes).
-- Partial indexes `WHERE deleted_at IS NULL` (optional) to reduce scan costs.
-
-Cache invalidation strategy (summary):
-
-- Read cache: Redis for `GET /v1/properties` (and others as applicable), TTL-configured.
-- Cache key: composed by tenant + normalized query string (sorted keys) + version suffix.
-- Invalidation:
-  - On write (create/update/delete/restore) for affected entity/tenant, we delete keys by tenant prefix.
-  - Version bump can be used to invalidate across the board on schema/logic changes.
-
----
-
-## Massive seed (idempotent)
-
-```bash
-# Docker (uses dist/scripts/seed.js and compose host/port)
-npm run seed:docker
-```
-
-Default sizes: 100k `properties`, 200k `listings`, 150k `transactions` (configurable).
-
----
-
-## Tests
-
-```bash
-npm run test
-npm run test:watch
-npm run test:cov
-```
-
----
-
-## Load testing (autocannon)
-
-Install globally if needed:
-
-```bash
-npm i -g autocannon
-```
-
-Examples:
-
-```bash
-# GET properties with filters and pagination
-autocannon -c 200 -d 30 -p 10 \
-  -H "Authorization=Bearer $TOKEN" \
-  "http://localhost:3000/v1/properties?limit=25&order=desc&sector=central"
-
-# GET listings (cursor pagination)
-autocannon -c 200 -d 30 -p 10 \
-  -H "Authorization=Bearer $TOKEN" \
-  "http://localhost:3000/v1/listings?status=active&limit=25"
-
-# GET transactions filtering by date and price
-autocannon -c 200 -d 30 -p 10 \
-  -H "Authorization=Bearer $TOKEN" \
-  "http://localhost:3000/v1/transactions?fromDate=2025-08-01&toDate=2025-08-31&minPrice=200000&limit=25"
-
-# POST import CSV (use a small file to test 202 acceptance throughput)
-autocannon -c 50 -d 20 -m POST \
-  -H "Authorization=Bearer $TOKEN" \
-  -H "Content-Type=text/csv" \
-  --body @/tmp/import.csv \
-  http://localhost:3000/v1/imports
-```
-
-Tips:
-
-- Use `start:cluster` to leverage all CPUs.
-- Monitor Postgres (average latency ~7–8ms per query achieved after optimizations).
-
-SLOs (targets under the prescribed dataset and 200 concurrency for 60s):
-
-- `GET /v1/properties` p95 ≤ 800ms (no cache)
-- `GET /v1/properties` p95 ≤ 300ms (with cache warm)
-- Error rate ≤ 1%
-
-Sample command (replace `$TOKEN`):
-
-```bash
-autocannon -w 15 -d 60 -c 200 -p 1 \
-  -H "authorization: Bearer $TOKEN" \
-  "http://localhost:3000/v1/properties?sector=Moema&type=apartment&minPrice=200000&maxPrice=1500000&latitude=-23.56&longitude=-46.64&radiusKm=5&limit=50&sortBy=price&order=asc"
-```
-
----
-
-## Architecture docs (ADRs & Diagrams)
-
-- ADRs: see `docs/adr/`
-  - `0001-framework-choice.md`
-  - `0002-pagination-cursor-vs-offset.md`
-- Diagrams (PlantUML): see `docs/diagrams/`
-  - `c4-container.puml` — C4 Container view
-  - `import-sequence.puml` — CSV Import flow (API → RabbitMQ → Worker → DB)
-
-To render PlantUML, use any PlantUML-compatible viewer or the VSCode extension.
-
-## Redis distributed lock (utility)
-
-Utility file: `src/common/redis/redis-lock.util.ts`
-
-Example usage:
-
-```ts
-import { Redis } from 'ioredis';
-import { RedisLock } from '../common/redis/redis-lock.util';
-
-const redis = new Redis(process.env.REDIS_URL!);
-const lock = new RedisLock(redis, { ttlMs: 10_000 });
-
-await lock.withLock(`recalc:${tenantId}`, async () => {
-  // critical section here (e.g., recompute aggregates)
-});
-```
-
-Notes:
-
-- Uses SET NX PX + safe release via Lua script.
-- Supports retries and timeouts; ideal to serialize critical sections and avoid race conditions.
-
----
-
-## Security
-
-- CSRF enabled (where applicable) and security headers via Helmet.
-- Never commit secrets; use local/CI `.env`.
-- Input validation and sanitization via DTOs (`class-validator`/`class-transformer`).
-- Authentication with JWT access + refresh rotation; blacklist/rotation of compromised refresh tokens.
-- Authorization with roles (`user`/`admin`) and strict tenant enforcement on all queries.
-- Security headers via Helmet; CORS configured.
-- Rate limiting optional (enable at ingress/proxy level for prod).
-- Secrets in env; no secrets in repo.
-- SQL protection: parameterized queries via TypeORM/query builder.
-- Logging without sensitive data; correlation-id for traceability.
-
----
-
-## License
+## 10) Licença
 
 MIT
