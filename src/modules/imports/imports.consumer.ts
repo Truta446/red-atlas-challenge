@@ -89,7 +89,9 @@ export class ImportsConsumer {
         await lock.withLock(`imports:job:${jobId}`, runCritical);
       } catch (lockErr) {
         // If Redis is unavailable or lock fails, proceed without lock to avoid stalling processing
-        this.logger.warn(`Lock unavailable for job=${jobId}, proceeding without lock: ${String((lockErr as any)?.message || lockErr)}`);
+        this.logger.warn(
+          `Lock unavailable for job=${jobId}, proceeding without lock: ${String((lockErr as any)?.message || lockErr)}`,
+        );
         await runCritical();
       }
     } catch (e: any) {

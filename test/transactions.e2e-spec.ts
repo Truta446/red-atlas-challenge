@@ -85,10 +85,7 @@ describe('Transactions (e2e)', () => {
   });
 
   it('PATCH /v1/transactions/:id should update', async () => {
-    const res = await request(app.getHttpServer())
-      .patch('/v1/transactions/tx1')
-      .send({ note: 'Updated' })
-      .expect(200);
+    const res = await request(app.getHttpServer()).patch('/v1/transactions/tx1').send({ note: 'Updated' }).expect(200);
     expect(res.body.id).toBe('tx1');
     expect(res.body.note).toBe('Updated');
   });

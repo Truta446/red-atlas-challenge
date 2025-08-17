@@ -176,10 +176,10 @@ export class PropertiesService {
       });
       if (query.sortBy === 'distance') {
         // KNN order by proximity using GiST index
-        qb.addOrderBy(
-          'p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)',
-          'ASC',
-        ).setParameters({ lngOrder: query.longitude, latOrder: query.latitude });
+        qb.addOrderBy('p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)', 'ASC').setParameters({
+          lngOrder: query.longitude,
+          latOrder: query.latitude,
+        });
       }
     }
 

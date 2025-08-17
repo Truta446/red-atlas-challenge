@@ -13,10 +13,7 @@ describe('AuditService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuditService,
-        { provide: getRepositoryToken(AuditLog), useValue: repo },
-      ],
+      providers: [AuditService, { provide: getRepositoryToken(AuditLog), useValue: repo }],
     }).compile();
 
     service = module.get(AuditService);

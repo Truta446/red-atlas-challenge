@@ -50,7 +50,7 @@ describe('ImportsService', () => {
 
   it('enqueueImport returns existing job for same idempotency key', async () => {
     (jobs.findOne as jest.Mock).mockResolvedValueOnce({ id: 'existing' } as any);
-    const res = await service.enqueueImport('t', 'key', Readable.from(['a,b\n']))
+    const res = await service.enqueueImport('t', 'key', Readable.from(['a,b\n']));
     expect(res.id).toBe('existing');
     expect(jobs.save).not.toHaveBeenCalled();
   });
@@ -61,7 +61,7 @@ describe('ImportsService', () => {
     (jobs.save as jest.Mock).mockResolvedValue({ id: 'j1' });
     const spy = jest.spyOn<any, any>(service as any, 'publishStream').mockResolvedValue(undefined);
 
-    const res = await service.enqueueImport('t', 'key', Readable.from(['h1\n']))
+    const res = await service.enqueueImport('t', 'key', Readable.from(['h1\n']));
     expect(res.id).toBe('j1');
     expect(spy).toHaveBeenCalled();
   });
@@ -80,9 +80,7 @@ describe('ImportsService', () => {
       whereInIds: jest.fn().mockReturnThis(),
       execute: jest.fn().mockResolvedValue({}),
     };
-    (props.createQueryBuilder as jest.Mock)
-      .mockReturnValueOnce(insertQB)
-      .mockReturnValueOnce(updateQB);
+    (props.createQueryBuilder as jest.Mock).mockReturnValueOnce(insertQB).mockReturnValueOnce(updateQB);
 
     const rows = [
       { address: 'a', sector: 's', type: 't', price: 10, latitude: 1, longitude: 2 },
@@ -104,17 +102,14 @@ describe('ImportsService', () => {
     };
     (props.createQueryBuilder as jest.Mock).mockReturnValueOnce(insertQB);
 
-    const rows = [ { address: 'a', sector: 's', type: 't', price: 10, latitude: 1, longitude: 2 } ] as any;
+    const rows = [{ address: 'a', sector: 's', type: 't', price: 10, latitude: 1, longitude: 2 }] as any;
     const res = await service.flushBatch('t', rows);
     expect(res).toEqual({ ok: 0, ko: 1 });
   });
 
   it('publishStream publishes remaining batch and marks published', async () => {
     // header + one valid row
-    const stream = Readable.from([
-      'address,sector,type,price,latitude,longitude\n',
-      'A,S,T,123,1,2\n',
-    ]);
+    const stream = Readable.from(['address,sector,type,price,latitude,longitude\n', 'A,S,T,123,1,2\n']);
     (jobs.increment as jest.Mock).mockResolvedValue(undefined);
     (jobs.update as jest.Mock).mockResolvedValue(undefined);
 

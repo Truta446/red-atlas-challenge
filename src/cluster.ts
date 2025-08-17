@@ -15,7 +15,9 @@ function startCluster(): void {
     }
 
     cluster.on('exit', (worker, code, signal) => {
-      console.warn(`[cluster] Worker ${worker.process.pid} died (code=${code}, signal=${signal}). Spawning a new one...`);
+      console.warn(
+        `[cluster] Worker ${worker.process.pid} died (code=${code}, signal=${signal}). Spawning a new one...`,
+      );
       cluster.fork();
     });
   } else {

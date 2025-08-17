@@ -88,7 +88,7 @@ describe('ImportsConsumer', () => {
     expect(sendToQueue).toHaveBeenCalledWith(
       'imports.batch.dlq',
       expect.any(Buffer),
-      expect.objectContaining({ contentType: 'application/json', persistent: true })
+      expect.objectContaining({ contentType: 'application/json', persistent: true }),
     );
     expect(ack).toHaveBeenCalledWith(message);
     expect(nack).not.toHaveBeenCalled();
@@ -109,10 +109,7 @@ describe('ImportsConsumer', () => {
     await consumer.handleBatch({ jobId: 'j1', tenantId: 't', seq: 5, rows: [{}, {}, {}] as any });
 
     expect(service.flushBatch).toHaveBeenCalledWith('t', [{}, {}, {}]);
-    expect(jobs.query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE imports'),
-      [3, 2, 1, 'j1']
-    );
+    expect(jobs.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE imports'), [3, 2, 1, 'j1']);
     expect(batches.save).toHaveBeenCalledWith({ jobId: 'j1', seq: 5 });
     expect(jobs.update).not.toHaveBeenCalledWith({ id: 'j1' }, { status: 'completed' });
   });

@@ -76,7 +76,10 @@ export class ListingsService {
     return entity;
   }
 
-  public async findMany(query: QueryListingsDto, tenantId: string): Promise<{ items: Listing[]; nextCursor: string | null }> {
+  public async findMany(
+    query: QueryListingsDto,
+    tenantId: string,
+  ): Promise<{ items: Listing[]; nextCursor: string | null }> {
     const qb = this.repo.createQueryBuilder('l');
     qb.where('l.deletedAt IS NULL');
     qb.andWhere('l.tenantId = :tenantId', { tenantId });

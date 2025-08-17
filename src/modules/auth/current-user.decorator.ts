@@ -7,7 +7,9 @@ export interface CurrentUserPayload {
   tenantId: string;
 }
 
-export const CurrentUser = createParamDecorator((data: unknown, ctx: ExecutionContext): CurrentUserPayload | undefined => {
-  const req = ctx.switchToHttp().getRequest();
-  return req.user as CurrentUserPayload | undefined;
-});
+export const CurrentUser = createParamDecorator(
+  (data: unknown, ctx: ExecutionContext): CurrentUserPayload | undefined => {
+    const req = ctx.switchToHttp().getRequest();
+    return req.user as CurrentUserPayload | undefined;
+  },
+);
