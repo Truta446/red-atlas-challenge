@@ -1,10 +1,10 @@
+import { UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import { AuthService } from './auth.service';
 import { User } from '../users/user.entity';
+import { AuthService } from './auth.service';
 
 jest.mock('../../common/security/password.util', () => ({
   hashPassword: jest.fn(async () => 'hashed_pw'),
@@ -101,7 +101,6 @@ describe('AuthService', () => {
   it('rotateRefresh succeeds when token valid and matches stored hash', async () => {
     (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 'u1', email: 'a@b.com', tenantId: 't' });
     // Pre-hash to match stored sha256 (use require to avoid vm modules flag)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const crypto = require('crypto');
     const rt = 'refresh-token';
     const hash = crypto.createHash('sha256').update(rt).digest('hex');

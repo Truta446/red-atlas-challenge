@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
 
 const SORT_WHITELIST = ['price', 'createdAt', 'distance'] as const;
 export type SortBy = (typeof SORT_WHITELIST)[number];

@@ -130,4 +130,43 @@ describe('PropertiesService', () => {
     expect(res.items.length).toBe(2);
     expect(res.nextCursor).toBeTruthy();
   });
+
+  it('findMany applies geo filter and distance ordering when lat/lng/radius and sortBy=distance', async () => {
+    const qb = createQB({ setParameters: jest.fn().mockReturnThis() });
+    qb.getMany.mockResolvedValue([{ id: 'p1' }] as any);
+    (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    const res = await service.findMany(
+      { latitude: 1, longitude: 2, radiusKm: 3, sortBy: 'distance', limit: 1 } as any,
+      tenantId,
+    );
+    expect(res.items.length).toBe(1);
+    // ST_DWithin where added
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining('ST_DWithin'),
+      expect.objectContaining({ lng: 2, lat: 1, meters: 3000 }),
+    );
+    // KNN addOrderBy applied
+    expect(qb.addOrderBy).toHaveBeenCalledWith(
+      expect.stringContaining('p.location <-> ST_SetSRID'),
+      'ASC',
+    );
+    // Secondary parameters for ordering present
+    expect(qb.setParameters).toHaveBeenCalledWith(expect.objectContaining({ lngOrder: 2, latOrder: 1 }));
+  });
+
+  it('findMany applies cursor pagination filter when cursor provided', async () => {
+    const qb = createQB();
+    qb.getMany.mockResolvedValue([{ id: 'p2' }] as any);
+    (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    const uuid = '123e4567-e89b-12d3-a456-426614174000';
+    const cursor = Buffer.from(uuid, 'utf8').toString('base64url');
+    await service.findMany({ cursor, limit: 1 } as any, tenantId);
+    // Ensure id filter is applied
+    const calledWithIdFilter = qb.andWhere.mock.calls.some((c: any[]) =>
+      typeof c[0] === 'string' && c[0].includes('p.id > :afterId'),
+    );
+    expect(calledWithIdFilter).toBe(true);
+  });
 });
