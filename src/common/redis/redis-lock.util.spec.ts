@@ -1,5 +1,5 @@
-import { RedisLock } from './redis-lock.util';
 import type { Redis } from 'ioredis';
+import { RedisLock } from './redis-lock.util';
 
 // Minimal fake Redis implementing the commands we use
 class FakeRedis implements Partial<Redis> {
@@ -7,7 +7,7 @@ class FakeRedis implements Partial<Redis> {
 
   constructor(private now = () => Date.now()) {}
 
-  async set(key: string, value: string, px: 'PX', ttl: number, nx: 'NX'): Promise<'OK' | null> {
+  public async set(key: string, value: string, px: 'PX', ttl: number, nx: 'NX'): Promise<'OK' | null> {
     const curr = this.store.get(key);
     if (curr && curr.expiresAt > this.now()) return null; // key exists and not expired
     const expiresAt = this.now() + ttl;
@@ -15,7 +15,7 @@ class FakeRedis implements Partial<Redis> {
     return 'OK';
   }
 
-  async get(key: string): Promise<string | null> {
+  public async get(key: string): Promise<string | null> {
     const v = this.store.get(key);
     if (!v) return null;
     if (v.expiresAt <= this.now()) {
@@ -25,8 +25,7 @@ class FakeRedis implements Partial<Redis> {
     return v.value;
   }
 
-  // Simplified EVAL for release script
-  async eval(script: string, numKeys: number, key: string, token: string): Promise<number> {
+  public async eval(script: string, numKeys: number, key: string, token: string): Promise<number> {
     const curr = await this.get(key);
     if (curr === token) {
       this.store.delete(key);

@@ -23,7 +23,6 @@ function startCluster(): void {
   } else {
     // Each worker just imports the main bootstrap (which starts the Fastify/Nest server)
     // Importing as side-effect because src/main.ts calls bootstrap() immediately
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     require('./main');
   }
 }
