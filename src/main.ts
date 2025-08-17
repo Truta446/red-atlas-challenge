@@ -1,9 +1,8 @@
-import fastifyCsrf from '@fastify/csrf-protection';
 import compress from '@fastify/compress';
+import fastifyCsrf from '@fastify/csrf-protection';
 import helmet from '@fastify/helmet';
 import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -26,7 +25,7 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: 'http://localhost:4200',
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -52,7 +51,7 @@ async function bootstrap() {
   // Serialization: apply @Exclude/@Expose on entities
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-  // Swagger OpenAPI at /doc
+  // Swagger OpenAPI at /docs
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Red Atlas API')
     .setDescription('Real estate management API')

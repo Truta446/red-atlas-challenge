@@ -1,10 +1,11 @@
 import { INestApplication, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthGuard } from '../src/modules/auth/auth.guard';
-import { ImportsService } from '../src/modules/imports/imports.service';
-import { ImportJob } from '../src/modules/imports/import-job.entity';
-import { ImportsController } from '../src/modules/imports/imports.controller';
+
+import { AuthGuard } from '../src/modules/auth/guards/auth.guard';
+import { ImportsController } from '../src/modules/imports/controllers/imports.controller';
+import { ImportJob } from '../src/modules/imports/entities/import-job.entity';
+import { ImportsService } from '../src/modules/imports/services/imports.service';
 
 const allowAuthGuard = {
   canActivate: (context: any) => {
