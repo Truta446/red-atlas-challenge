@@ -1,12 +1,13 @@
-import { INestApplication, VersioningType, CallHandler, ExecutionContext } from '@nestjs/common';
 import { CacheInterceptor } from '@nestjs/cache-manager';
+import { CallHandler, ExecutionContext, INestApplication, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthGuard } from '../src/modules/auth/auth.guard';
-import { RolesGuard } from '../src/modules/auth/roles.guard';
-import { PropertiesService } from '../src/modules/properties/properties.service';
-import { Property } from '../src/modules/properties/property.entity';
-import { PropertiesController } from '../src/modules/properties/properties.controller';
+
+import { AuthGuard } from '../src/modules/auth/guards/auth.guard';
+import { RolesGuard } from '../src/modules/auth/guards/roles.guard';
+import { PropertiesController } from '../src/modules/properties/controllers/properties.controller';
+import { Property } from '../src/modules/properties/entities/property.entity';
+import { PropertiesService } from '../src/modules/properties/services/properties.service';
 
 // Mocks
 const allowAuthGuard = {

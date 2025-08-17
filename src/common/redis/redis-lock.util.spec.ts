@@ -95,4 +95,49 @@ describe('RedisLock', () => {
     const t = await lock.acquire('crit');
     expect(typeof t).toBe('string');
   });
+
+  it('acquire throws after maxRetries exhausted', async () => {
+    // Fake redis that always reports key present (never expires)
+    class BusyRedis extends FakeRedis {
+      public override async set(): Promise<'OK' | null> {
+        return null; // simulate NX not set
+      }
+    }
+    const redis = new BusyRedis() as unknown as Redis;
+    const lock = new RedisLock(redis, { ttlMs: 10, maxRetries: 0, retryDelayMs: 1 });
+    await expect(lock.acquire('busy')).rejects.toThrow('Failed to acquire lock: busy');
+  });
+
+  it('withLock does not throw if release fails', async () => {
+    const redis = new FakeRedis() as unknown as Redis;
+    const lock = new RedisLock(redis, { ttlMs: 1000 });
+    // Monkey-patch release to throw to exercise finally-catch path
+    const realRelease = lock.release.bind(lock);
+    (lock as any).release = jest.fn(async (...args: any[]) => {
+      // call real once to delete, then throw on next call
+      if ((lock as any)._thrown) throw new Error('release error');
+      (lock as any)._thrown = true;
+      return realRelease(...args);
+    });
+
+    const result = await lock.withLock('crit2', async () => 7);
+    expect(result).toBe(7);
+    // ensure our patched release was called
+    expect((lock as any).release).toHaveBeenCalled();
+  });
+
+  it('acquire retries after delay then succeeds', async () => {
+    class BusyOnce extends FakeRedis {
+      private attempts = 0;
+      public override async set(key: string, value: string, px: 'PX', ttl: number, nx: 'NX') {
+        this.attempts += 1;
+        if (this.attempts === 1) return null; // first attempt fails
+        return super.set(key, value, px, ttl, nx);
+      }
+    }
+    const redis = new BusyOnce() as unknown as Redis;
+    const lock = new RedisLock(redis, { ttlMs: 50, retryDelayMs: 1, maxRetries: 2 });
+    const token = await lock.acquire('retry');
+    expect(typeof token).toBe('string');
+  });
 });

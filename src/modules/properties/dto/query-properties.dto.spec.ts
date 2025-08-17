@@ -24,6 +24,17 @@ describe('QueryPropertiesDto validation', () => {
     expect(errs).toHaveLength(0);
   });
 
+  it('accepts when optional fields are omitted', async () => {
+    const dto = plainToInstance(QueryPropertiesDto, {
+      // only set a couple of filters; leave sortBy/order undefined
+      sector: 'Centro',
+      minPrice: 10,
+      maxPrice: 20,
+    });
+    const errs = await validate(dto);
+    expect(errs).toHaveLength(0);
+  });
+
   it('rejects invalid dates and order/sortBy', async () => {
     const dto = plainToInstance(QueryPropertiesDto, {
       fromDate: 'not-a-date',
