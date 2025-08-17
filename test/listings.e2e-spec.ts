@@ -1,12 +1,13 @@
-import { INestApplication, VersioningType, CallHandler, ExecutionContext } from '@nestjs/common';
 import { CacheInterceptor } from '@nestjs/cache-manager';
+import { CallHandler, ExecutionContext, INestApplication, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthGuard } from '../src/modules/auth/auth.guard';
-import { RolesGuard } from '../src/modules/auth/roles.guard';
-import { ListingsService } from '../src/modules/listings/listings.service';
-import { ListingsController } from '../src/modules/listings/listings.controller';
-import type { Listing } from '../src/modules/listings/listing.entity';
+
+import { AuthGuard } from '../src/modules/auth/guards/auth.guard';
+import { RolesGuard } from '../src/modules/auth/guards/roles.guard';
+import { ListingsController } from '../src/modules/listings/controllers/listings.controller';
+import type { Listing } from '../src/modules/listings/entities/listing.entity';
+import { ListingsService } from '../src/modules/listings/services/listings.service';
 
 // Guards overrides
 const allowAuthGuard = {

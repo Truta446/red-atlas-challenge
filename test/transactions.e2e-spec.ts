@@ -1,12 +1,13 @@
-import { INestApplication, VersioningType, CallHandler, ExecutionContext } from '@nestjs/common';
 import { CacheInterceptor } from '@nestjs/cache-manager';
+import { CallHandler, ExecutionContext, INestApplication, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthGuard } from '../src/modules/auth/auth.guard';
-import { RolesGuard } from '../src/modules/auth/roles.guard';
-import { TransactionsService } from '../src/modules/transactions/transactions.service';
-import { TransactionsController } from '../src/modules/transactions/transactions.controller';
-import type { Transaction } from '../src/modules/transactions/transaction.entity';
+
+import { AuthGuard } from '../src/modules/auth/guards/auth.guard';
+import { RolesGuard } from '../src/modules/auth/guards/roles.guard';
+import { TransactionsController } from '../src/modules/transactions/controllers/transactions.controller';
+import type { Transaction } from '../src/modules/transactions/entities/transaction.entity';
+import { TransactionsService } from '../src/modules/transactions/services/transactions.service';
 
 const allowAuthGuard = {
   canActivate: (context: any) => {

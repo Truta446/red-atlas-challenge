@@ -35,7 +35,6 @@ export class QueryPropertiesDto {
   @IsDateString()
   @ApiPropertyOptional({
     description: 'Filter by createdAt from this ISO date (inclusive)',
-    example: '2024-01-01T00:00:00.000Z',
   })
   public fromDate?: string;
 
@@ -43,7 +42,6 @@ export class QueryPropertiesDto {
   @IsDateString()
   @ApiPropertyOptional({
     description: 'Filter by createdAt up to this ISO date (inclusive)',
-    example: '2024-12-31T23:59:59.999Z',
   })
   public toDate?: string;
 
