@@ -25,7 +25,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
-        level: 'info',
+        level: 'warn',
         redact: {
           paths: ['req.headers.authorization', 'req.headers.cookie', 'password'],
           censor: '[Redacted]',

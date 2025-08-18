@@ -61,7 +61,7 @@ export class TransactionsService {
   }
 
   public async findOne(id: string, tenantId: string): Promise<Transaction | null> {
-    return this.repo.findOne({ where: { id, tenantId } });
+    return this.repo.findOne({ where: { id, tenantId }, relations: ['property', 'listing'] });
   }
 
   public async update(id: string, dto: UpdateTransactionDto, tenantId: string): Promise<Transaction> {
@@ -94,10 +94,12 @@ export class TransactionsService {
     qb.where('t.deletedAt IS NULL');
     qb.andWhere('t.tenantId = :tenantId', { tenantId });
 
-    qb.leftJoin('t.property', 'p');
-    qb.leftJoin('t.listing', 'l');
+    qb.leftJoinAndSelect('t.property', 'p');
+    qb.leftJoinAndSelect('t.listing', 'l');
 
     qb.select(['t.id', 't.tenantId', 't.createdAt', 't.updatedAt', 't.price', 't.date']);
+    qb.addSelect(['p.id', 'p.address', 'p.sector', 'p.type']);
+    qb.addSelect(['l.id', 'l.status', 'l.price']);
 
     if (query.propertyId) qb.andWhere('p.id = :pid', { pid: query.propertyId });
     if (query.listingId) qb.andWhere('l.id = :lid', { lid: query.listingId });
@@ -106,8 +108,38 @@ export class TransactionsService {
     if (query.fromDate) qb.andWhere('t.date >= :from', { from: query.fromDate });
     if (query.toDate) qb.andWhere('t.date <= :to', { to: query.toDate });
 
-    const order: 'ASC' | 'DESC' = (query.order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-    qb.addOrderBy('t.date', order);
+    // Property-based filters
+    if (query.sector) qb.andWhere('p.sector = :sector', { sector: query.sector });
+    if (query.type) qb.andWhere('p.type = :ptype', { ptype: query.type });
+    if (query.address) qb.andWhere('p.address ILIKE :addr', { addr: `%${query.address}%` });
+
+    // Geo radius using property's location
+    const hasGeo: boolean =
+      typeof (query as any).latitude === 'number' &&
+      typeof (query as any).longitude === 'number' &&
+      typeof (query as any).radiusKm === 'number';
+    if (hasGeo) {
+      qb.andWhere(
+        'ST_DWithin(p.location::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)',
+        { lng: (query as any).longitude, lat: (query as any).latitude, meters: ((query as any).radiusKm as number) * 1000 },
+      );
+    }
+
+    // Sorting
+    const allowedSort = new Set(['date', 'price', 'createdAt', 'distance']);
+    const sortByRaw = (query as any).sortBy && allowedSort.has((query as any).sortBy) ? ((query as any).sortBy as string) : 'date';
+    const order: 'ASC' | 'DESC' = ((query as any).order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+    if (sortByRaw === 'distance' && hasGeo) {
+      qb.addOrderBy('p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)', 'ASC').setParameters({
+        lngOrder: (query as any).longitude,
+        latOrder: (query as any).latitude,
+      });
+      // Secondary order for determinism
+      qb.addOrderBy('t.date', order);
+    } else {
+      qb.addOrderBy(`t.${sortByRaw}` as any, order);
+    }
 
     const limit: number = Math.min(query.limit || 25, 100);
     if (query.cursor) {

@@ -1,4 +1,4 @@
-import { Column, Entity, Index, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, ManyToOne, JoinColumn } from 'typeorm';
 
 import { BaseEntityWithTenant } from '../../../common/entities/base.entity';
 import { Listing } from '../../listings/entities/listing.entity';
@@ -7,9 +7,11 @@ import { Property } from '../../properties/entities/property.entity';
 @Entity('transactions')
 export class Transaction extends BaseEntityWithTenant {
   @ManyToOne(() => Property, (p: Property) => p.transactions, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'propertyid' })
   public property!: Property;
 
   @ManyToOne(() => Listing, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'listingid' })
   public listing?: Listing | null;
 
   @Index()
