@@ -124,6 +124,58 @@ describe('PropertiesService', () => {
     expect(called).toBe(true);
   });
 
+  it('findMany applies price tuple with DESC when cursor payload matches', async () => {
+    const qb = createQB();
+    qb.getMany.mockResolvedValue([{ id: 'p4' }] as any);
+    (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+    const { encodeCursorPayload } = require('../../../common/utils/cursor');
+    const cursor = encodeCursorPayload({
+      sortBy: 'price',
+      order: 'DESC',
+      lastValue: 999999,
+      lastId: '123e4567-e89b-12d3-a456-426614174111',
+    });
+    await service.findMany({ cursor, sortBy: 'price', order: 'desc', limit: 1 } as any, tenantId);
+    const called = qb.andWhere.mock.calls.some((c: any[]) => String(c[0]).includes('(p.price, p.id) <'));
+    expect(called).toBe(true);
+  });
+
+  it('findMany applies distance tuple when distance sort and geo filter with payload', async () => {
+    const qb = createQB({ setParameters: jest.fn().mockReturnThis() });
+    qb.getMany.mockResolvedValue([{ id: 'p5' }] as any);
+    (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+    const { encodeCursorPayload } = require('../../../common/utils/cursor');
+    const cursor = encodeCursorPayload({
+      sortBy: 'distance',
+      order: 'ASC',
+      lastValue: 123.45,
+      lastId: '123e4567-e89b-12d3-a456-426614174222',
+    });
+    await service.findMany(
+      { cursor, sortBy: 'distance', order: 'asc', limit: 1, latitude: -23.5, longitude: -46.6, radiusKm: 3 } as any,
+      tenantId,
+    );
+    const called = qb.andWhere.mock.calls.some((c: any[]) => String(c[0]).includes('ST_Distance'));
+    expect(called).toBe(true);
+  });
+
+  it('findMany generates nextCursor for distance when hasMore and calls cache.set', async () => {
+    const qb = createQB();
+    qb.getMany.mockResolvedValue([
+      { id: 'p1', distanceOrder: 10 },
+      { id: 'p2', distanceOrder: 12 },
+    ] as any);
+    (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+    const setSpy = jest.fn();
+    (cache as any).set = setSpy;
+    const res = await service.findMany(
+      { sortBy: 'distance', order: 'asc', limit: 1, latitude: -23.5, longitude: -46.6, radiusKm: 3 } as any,
+      tenantId,
+    );
+    expect(res.nextCursor).toBeTruthy();
+    expect(setSpy).toHaveBeenCalled();
+  });
+
   it('findMany with geo filter but sortBy != distance should NOT add KNN order; should add standard order', async () => {
     const qb = createQB();
     qb.getMany.mockResolvedValue([{ id: 'p1' }] as any);
@@ -228,6 +280,16 @@ describe('PropertiesService', () => {
     expect(res.nextCursor).toBeTruthy();
   });
 
+  it('findMany returns cached result when cache hit', async () => {
+    const cached = { items: [{ id: 'c1' }] as any, nextCursor: null };
+    (cache as any).get = jest.fn().mockResolvedValue(cached);
+    const qb = createQB();
+    (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+    const res = await service.findMany({ limit: 2 } as any, tenantId);
+    expect(res).toBe(cached);
+    expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
   it('findMany applies geo filter and distance ordering when lat/lng/radius and sortBy=distance', async () => {
     const qb = createQB({ setParameters: jest.fn().mockReturnThis() });
     qb.getMany.mockResolvedValue([{ id: 'p1' }] as any);
@@ -262,6 +324,22 @@ describe('PropertiesService', () => {
       (c: any[]) => typeof c[0] === 'string' && c[0].includes('p.id > :afterId'),
     );
     expect(calledWithIdFilter).toBe(true);
+  });
+
+  it('findMany applies extended cursor payload tuple when sort/order match', async () => {
+    const qb = createQB();
+    qb.getMany.mockResolvedValue([{ id: 'p3' }] as any);
+    (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+    const { encodeCursorPayload } = require('../../../common/utils/cursor');
+    const cursor = encodeCursorPayload({
+      sortBy: 'createdAt',
+      order: 'ASC',
+      lastValue: '2024-01-02T00:00:00.000Z',
+      lastId: '123e4567-e89b-12d3-a456-426614174000',
+    });
+    await service.findMany({ cursor, sortBy: 'createdAt', order: 'asc', limit: 1 } as any, tenantId);
+    const called = qb.andWhere.mock.calls.some((c: any[]) => String(c[0]).includes('(p.created_at, p.id) >'));
+    expect(called).toBe(true);
   });
 
   it('findMany ignores invalid cursor', async () => {

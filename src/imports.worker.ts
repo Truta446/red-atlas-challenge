@@ -20,7 +20,8 @@ async function bootstrap(): Promise<void> {
           'x-dead-letter-routing-key': 'imports.retry.10s',
         },
       },
-      prefetchCount: 8,
+      noAck: false,
+      prefetchCount: 1,
     },
   });
 

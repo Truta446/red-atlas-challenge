@@ -5,7 +5,7 @@ import { createHash } from 'crypto';
 import { Repository } from 'typeorm';
 
 import { hashPassword, verifyPassword } from '../../../common/security/password.util';
-import { User } from '../../users/user.entity';
+import { User } from '../../users/entities/user.entity';
 
 export interface JwtPayload {
   sub: string; // user id

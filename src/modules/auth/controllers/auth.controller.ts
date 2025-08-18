@@ -13,19 +13,19 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  public async register(@Body() dto: RegisterDto) {
+  public async register(@Body() dto: RegisterDto): Promise<{ accessToken: string; refreshToken: string }> {
     return this.auth.register(dto.email, dto.password, dto.tenantId);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  public async login(@Body() dto: LoginDto) {
+  public async login(@Body() dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
     return this.auth.login(dto.email, dto.password);
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  public async refresh(@Body() dto: RefreshDto) {
+  public async refresh(@Body() dto: RefreshDto): Promise<{ accessToken: string; refreshToken: string }> {
     return this.auth.rotateRefresh(dto.refreshToken);
   }
 }

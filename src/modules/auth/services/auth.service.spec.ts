@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { User } from '../../users/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { AuthService } from './auth.service';
 
 jest.mock('../../../common/security/password.util', () => ({
