@@ -73,8 +73,8 @@ export class PropertiesController {
   }
 
   @Patch(':id')
-  @Roles('admin')
   @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'user')
   public async update(
     @Param('id') id: string,
     @Body() dto: UpdatePropertyDto,

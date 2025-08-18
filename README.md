@@ -2,6 +2,38 @@
 
 Backend para gestión inmobiliaria de Red Atlas. Construido con NestJS (Fastify), PostgreSQL + PostGIS, TypeORM, Redis y RabbitMQ. Implementa autenticación JWT con rotación de refresh, multi‑tenant, CRUD avanzado (Properties, Listings, Transactions), paginación por cursor, consultas geoespaciales, caché y importaciones CSV asíncronas.
 
+## Inicio rápido
+
+Seguí estos pasos para levantar el proyecto localmente. Usá dos terminales para API y worker.
+
+```bash
+# 1) Node 22 con nvm
+nvm use 22
+
+# 2) Instalar dependencias (0 vulnerabilidades)
+npm i
+
+# 3) Infraestructura local (Postgres+PostGIS, Redis, RabbitMQ)
+docker compose up -d --build
+
+# 4) Preparar base de datos
+npm run migration:run
+
+# 5) Seed de datos iniciales
+npm run seed
+
+# 6) (Opcional) Generar CSV grande para probar import con colas
+npm run csv:gen
+
+# 7) Levantar la API (primer terminal)
+npm run start:api
+
+# 8) Levantar el worker de importación (segunda terminal)
+npm run start:worker:imports
+```
+
+Listo. Abrí Swagger en `http://localhost:3000/docs` para explorar la API.
+
 ---
 
 ## 1) Configuración local
@@ -9,13 +41,6 @@ Backend para gestión inmobiliaria de Red Atlas. Construido con NestJS (Fastify)
 - Requisitos
   - Node.js 22+
   - Docker y Docker Compose
-- Clonar e instalar
-  ```bash
-  # Clonar el repo
-  git clone <repo>
-  cd red-atlas-challenge
-  npm ci
-  ```
 - Variables de entorno: copiá `.env.example` a `.env` y completá los valores (ver próxima sección).
 
 ### Entorno (.env)
@@ -33,15 +58,26 @@ Variables requeridas/relevantes:
 Ejemplo:
 
 ```env
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/redatlas
-REDIS_URL=redis://localhost:6379
-RABBITMQ_URL=amqp://localhost:5672
-ACCESS_TOKEN_SECRET=change-me
-ACCESS_TOKEN_TTL=15m
-REFRESH_TOKEN_SECRET=change-me-too
-REFRESH_TOKEN_TTL=7d
-DEFAULT_TENANT=tenant-local
 API_PORT=3000
+NODE_ENV=development
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=replace_me
+POSTGRES_DB=redatlas
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_URL=redis://localhost:6379
+RABBITMQ_URL=amqp://guest:guest@localhost:5672
+RABBITMQ_PORT=5672
+RABBITMQ_MGMT_PORT=15672
+RABBITMQ_DEFAULT_USER=guest
+RABBITMQ_DEFAULT_PASS=guest
+ACCESS_TOKEN_SECRET=replace_me
+ACCESS_TOKEN_TTL=1h
+REFRESH_TOKEN_SECRET=replace_me
+REFRESH_TOKEN_TTL=7d
+DEFAULT_TENANT=public
 ```
 
 ### Levantar infraestructura + API (Docker)
@@ -118,7 +154,8 @@ OpenAPI/Swagger: disponible en `/docs` (Bearer auth). Prefijo de rutas: `/v1`.
   npm i -g autocannon
 
   # ejemplo: GET /v1/properties con filtros y paginación
-  autocannon -c 200 -d 60 -p 10 \
+  autocannon -c 200 -d 60 -p 1 \
+    -H "Authorization: Bearer <token> \
     "http://localhost:3000/v1/properties?limit=25&order=desc&sector=central"
   ```
 
@@ -194,8 +231,8 @@ Usá un token JWT válido en el header `Authorization`. Reemplazá `$TOKEN` por 
 
 ```bash
 curl -v -X POST "http://localhost:3000/v1/imports" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Idempotency-Key: job-csv-003" \
+  -H "Authorization: Bearer <TOKEN> \
+  -H "Idempotency-Key: job-csv-001" \
   -H "Content-Type: text/csv" \
   --data-binary @data/properties-import.csv
 ```

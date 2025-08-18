@@ -1,8 +1,8 @@
 import compress from '@fastify/compress';
 import fastifyCsrf from '@fastify/csrf-protection';
 import helmet from '@fastify/helmet';
-import { ClassSerializerInterceptor, ValidationPipe, VersioningType } from '@nestjs/common';
-import { NestFactory, Reflector } from '@nestjs/core';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -45,11 +45,8 @@ async function bootstrap() {
   );
 
   await app.register(helmet);
-  await app.register(compress, { threshold: 10240 });
+  await app.register(compress, { threshold: 32768 });
   await app.register(fastifyCsrf);
-
-  // Serialization: apply @Exclude/@Expose on entities
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // Swagger OpenAPI at /docs
   const swaggerConfig = new DocumentBuilder()

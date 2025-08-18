@@ -46,4 +46,27 @@ describe('QueryListingsDto validation', () => {
     expect(e1.length).toBeGreaterThan(0);
     expect(e2.length).toBeGreaterThan(0);
   });
+
+  it('transforms latitude/longitude/radiusKm to numbers', async () => {
+    const dto = plainToInstance(QueryListingsDto, {
+      latitude: '-23.56',
+      longitude: '-46.64',
+      radiusKm: '5',
+    } as any);
+    const errs = await validate(dto);
+    expect(errs).toHaveLength(0);
+    expect(dto.latitude).toBeCloseTo(-23.56);
+    expect(dto.longitude).toBeCloseTo(-46.64);
+    expect(dto.radiusKm).toBe(5);
+  });
+
+  it('rejects non-numeric lat/lng/radiusKm', async () => {
+    const dto = plainToInstance(QueryListingsDto, {
+      latitude: 'x',
+      longitude: 'y',
+      radiusKm: 'z',
+    } as any);
+    const errs = await validate(dto);
+    expect(errs.length).toBeGreaterThan(0);
+  });
 });

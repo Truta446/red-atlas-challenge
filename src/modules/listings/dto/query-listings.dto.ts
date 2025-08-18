@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min, IsNumber, IsDateString } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 const SORT_WHITELIST = ['createdAt', 'price', 'distance'] as const;
 export type SortBy = (typeof SORT_WHITELIST)[number];
@@ -43,12 +43,12 @@ export class QueryListingsDto {
   @IsNumber()
   public maxPrice?: number;
 
-  @ApiPropertyOptional({ example: '2025-08-01' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
   public fromDate?: string;
 
-  @ApiPropertyOptional({ example: '2025-08-31' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
   public toDate?: string;

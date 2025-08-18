@@ -4,25 +4,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type { Cache } from 'cache-manager';
 import { Repository } from 'typeorm';
 
+import { decodeIdCursor, encodeCursorPayload, tryDecodeCursorPayload } from '../../../common/utils/cursor';
 import { CreatePropertyDto } from '../dto/create-property.dto';
 import { QueryPropertiesDto } from '../dto/query-properties.dto';
 import { UpdatePropertyDto } from '../dto/update-property.dto';
 import { Property } from '../entities/property.entity';
-
-function encodeCursor(id: string): string {
-  return Buffer.from(id, 'utf8').toString('base64url');
-}
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function decodeCursor(cursor: string): string | null {
-  try {
-    const decoded: string = Buffer.from(cursor, 'base64url').toString('utf8');
-    return isUuid(decoded) ? decoded : null;
-  } catch {
-    return null;
-  }
-}
 
 @Injectable()
 export class PropertiesService {
@@ -141,7 +127,8 @@ export class PropertiesService {
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
       return JSON.stringify(entries);
     };
-    const cacheKey = `tenant:${tenantId}:properties:list:v1:${normalize({
+    // bump version to v2 due to new cursor format
+    const cacheKey = `tenant:${tenantId}:properties:list:v2:${normalize({
       sector: query.sector,
       type: query.type,
       address: query.address,
@@ -157,8 +144,11 @@ export class PropertiesService {
       limit: query.limit,
       cursor: query.cursor,
     })}`;
-    const cached = await this.cache.get<{ items: Property[]; nextCursor: string | null }>(cacheKey);
-    if (cached) return cached;
+    const cacheAny: any = this.cache as any;
+    if (typeof cacheAny?.get === 'function') {
+      const cached = (await cacheAny.get(cacheKey)) as { items: Property[]; nextCursor: string | null } | undefined;
+      if (cached) return cached;
+    }
 
     const qb = this.repo.createQueryBuilder('p');
     qb.where('p.deletedAt IS NULL');
@@ -180,9 +170,7 @@ export class PropertiesService {
     if (query.toDate) qb.andWhere('p.createdAt <= :toDate', { toDate: query.toDate });
 
     const hasGeoFilter =
-      typeof query.latitude === 'number' &&
-      typeof query.longitude === 'number' &&
-      typeof query.radiusKm === 'number';
+      typeof query.latitude === 'number' && typeof query.longitude === 'number' && typeof query.radiusKm === 'number';
     if (hasGeoFilter) {
       const radiusKm: number = Number(query.radiusKm);
       qb.andWhere(`ST_DWithin(p.location::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)`, {
@@ -191,11 +179,19 @@ export class PropertiesService {
         meters: radiusKm * 1000,
       });
       if (query.sortBy === 'distance') {
-        // KNN order by proximity using GiST index
-        qb.addOrderBy('p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)', 'ASC').setParameters({
+        // KNN order by proximity using GiST index on geography (matches idx_prop_location_geog)
+        qb.addOrderBy(
+          'p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)',
+          'ASC',
+        ).setParameters({
           lngOrder: query.longitude,
           latOrder: query.latitude,
         });
+        // Also project exact distance for cursor filtering
+        qb.addSelect(
+          'ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)::geography)',
+          'distanceOrder',
+        );
       }
     }
 
@@ -203,16 +199,55 @@ export class PropertiesService {
     const allowedSort = new Set(['price', 'createdAt', 'distance']);
     const sortByRaw = query.sortBy && allowedSort.has(query.sortBy) ? (query.sortBy as string) : 'createdAt';
     const order: 'ASC' | 'DESC' = (query.order || 'asc').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
-    // When geo distance is present we already ordered by distance first; add secondary order for determinism
+    // When not distance, order by field + id for determinism and index usage
     if (sortByRaw !== 'distance') {
       qb.addOrderBy(`p.${sortByRaw}` as any, order);
+      qb.addOrderBy('p.id', order);
+    } else {
+      // distance ordering already added above; ensure secondary by id
+      qb.addOrderBy('p.id', 'ASC');
     }
 
     const limit: number = Math.min(query.limit || 25, 100);
     if (query.cursor) {
-      const afterId: string | null = decodeCursor(query.cursor);
-      if (afterId) {
-        qb.andWhere('p.id > :afterId', { afterId });
+      const payload = tryDecodeCursorPayload(query.cursor);
+      if (payload) {
+        // Ensure cursor matches current sort; otherwise ignore to avoid mismatched paging
+        if (payload.sortBy === sortByRaw && payload.order === order) {
+          if (sortByRaw === 'createdAt') {
+            const cmp = order === 'ASC' ? '>' : '<';
+            qb.andWhere(`(p.created_at, p.id) ${cmp} (:cVal, :cId)`, {
+              cVal: payload.lastValue,
+              cId: payload.lastId,
+            });
+          } else if (sortByRaw === 'price') {
+            const cmp = order === 'ASC' ? '>' : '<';
+            qb.andWhere(`(p.price, p.id) ${cmp} (:cVal, :cId)`, {
+              cVal: payload.lastValue,
+              cId: payload.lastId,
+            });
+          } else if (sortByRaw === 'distance' && hasGeoFilter) {
+            // Use computed distance expression for comparison
+            const cmp = '>';
+            qb.andWhere(
+              `(
+                ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)::geography),
+                p.id
+              ) ${cmp} (:cVal, :cId)`,
+              {
+                cVal: payload.lastValue,
+                cId: payload.lastId,
+              },
+            );
+          }
+        }
+      } else {
+        // Legacy cursor: only id. Keep backward compatibility
+        const afterId: string | null = decodeIdCursor(query.cursor);
+        if (afterId) {
+          const cmp = order === 'ASC' ? '>' : '<';
+          qb.andWhere(`p.id ${cmp} :afterId`, { afterId });
+        }
       }
     }
     qb.take(limit + 1);
@@ -227,10 +262,25 @@ export class PropertiesService {
     const rows: Property[] = await qb.getMany();
     const hasMore: boolean = rows.length > limit;
     const items: Property[] = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor: string | null = hasMore ? encodeCursor(items[items.length - 1].id) : null;
+    let nextCursor: string | null = null;
+    if (hasMore) {
+      const last = items[items.length - 1] as any;
+      if (sortByRaw === 'createdAt') {
+        nextCursor = encodeCursorPayload({ sortBy: 'createdAt', order, lastValue: last.createdAt, lastId: last.id });
+      } else if (sortByRaw === 'price') {
+        nextCursor = encodeCursorPayload({ sortBy: 'price', order, lastValue: last.price, lastId: last.id });
+      } else if (sortByRaw === 'distance') {
+        // distanceOrder is selected only when needed; default to null if absent
+        const lastDist = last?.distanceOrder ?? null;
+        nextCursor = encodeCursorPayload({ sortBy: 'distance', order: 'ASC', lastValue: lastDist, lastId: last.id });
+      }
+    }
     const result = { items, nextCursor };
-    // Short TTL cache (helps p95 with sustained identical queries)
-    await this.cache.set(cacheKey, result, 30_000);
+
+    if (typeof cacheAny?.set === 'function') {
+      await cacheAny.set(cacheKey, result, 30_000);
+    }
+
     return result;
   }
 }

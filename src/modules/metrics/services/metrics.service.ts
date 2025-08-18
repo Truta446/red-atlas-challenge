@@ -9,7 +9,7 @@ export class MetricsService {
   public readonly importsRowsOk: Counter<string>;
   public readonly importsRowsKo: Counter<string>;
 
-  public constructor() {
+  constructor() {
     this.registry = new Registry();
     collectDefaultMetrics({ register: this.registry });
 
