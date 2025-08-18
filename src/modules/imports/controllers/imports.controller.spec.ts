@@ -29,7 +29,7 @@ describe('ImportsController', () => {
       .compile();
 
     controller = module.get(ImportsController);
-    service = module.get(ImportsService) as any;
+    service = module.get(ImportsService);
   });
 
   it('create throws when CurrentUser is missing', async () => {

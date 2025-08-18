@@ -73,7 +73,7 @@ describe('AuditInterceptor', () => {
     // Build a body with circular ref and a stream-like object (no huge field to avoid truncation)
     const circular: any = { name: 'c' };
     circular.self = circular;
-    const streamLike = { pipe: () => {}, readable: true } as any;
+    const streamLike = { pipe: (..._args: unknown[]) => true, readable: true } as any;
     const body = { circular, file: streamLike };
 
     const ctx: ExecutionContext = {
@@ -93,7 +93,7 @@ describe('AuditInterceptor', () => {
 
     const next: CallHandler = { handle: () => of('ok') } as any;
     interceptor.intercept(ctx, next).subscribe(() => {
-      const arg = (log.mock.calls[0] && log.mock.calls[0][0]) || {};
+      const arg = log.mock.calls[0]?.[0] || {};
       expect(arg.after).toBeTruthy();
       // stream is replaced
       expect(arg.after.file).toBe('[stream]');
@@ -128,7 +128,7 @@ describe('AuditInterceptor', () => {
 
     const next: CallHandler = { handle: () => of('ok') } as any;
     interceptor.intercept(ctx, next).subscribe(() => {
-      const arg = (log.mock.calls[0] && log.mock.calls[0][0]) || {};
+      const arg = log.mock.calls[0]?.[0] || {};
       expect(arg.after).toEqual(
         expect.objectContaining({ truncated: true, size: expect.any(Number), preview: expect.any(String) }),
       );

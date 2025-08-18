@@ -44,7 +44,7 @@ describe('AuthService', () => {
 
     service = module.get(AuthService);
     users = module.get(getRepositoryToken(User));
-    jwt = module.get(JwtService) as any;
+    jwt = module.get(JwtService);
   });
 
   it('registers a new user and returns tokens', async () => {

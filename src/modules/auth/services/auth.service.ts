@@ -77,7 +77,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
     const user = await this.users.findOne({ where: { id: decoded.sub } });
-    if (!user || !user.refreshTokenHash) throw new UnauthorizedException('Refresh not allowed');
+    if (!user?.refreshTokenHash) throw new UnauthorizedException('Refresh not allowed');
     // rotation: must match stored hash, then replace it
     if (this.hashToken(refreshToken) !== user.refreshTokenHash) throw new UnauthorizedException('Token rotated');
 

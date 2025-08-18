@@ -27,7 +27,7 @@ describe('ImportsRmqTopology', () => {
     const assertQueue = jest.fn();
     const closeCh = jest.fn();
     const closeConn = jest.fn();
-    (connect as jest.Mock).mockResolvedValue({
+    connect.mockResolvedValue({
       createChannel: async () => ({ assertQueue, close: closeCh }),
       close: closeConn,
     });

@@ -23,7 +23,7 @@ describe('AuthController', () => {
     }).compile();
 
     controller = module.get(AuthController);
-    service = module.get(AuthService) as any;
+    service = module.get(AuthService);
   });
 
   it('register propagates service error', async () => {

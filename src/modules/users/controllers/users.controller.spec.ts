@@ -33,7 +33,7 @@ describe('UsersController', () => {
       .compile();
 
     controller = module.get(UsersController);
-    service = module.get(UsersService) as any;
+    service = module.get(UsersService);
   });
 
   it('PATCH /users/:id/role calls service.changeRole with tenant', async () => {
