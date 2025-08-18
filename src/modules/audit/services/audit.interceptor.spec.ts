@@ -13,7 +13,14 @@ describe('AuditInterceptor', () => {
     return {
       getType: () => 'http',
       switchToHttp: () => ({
-        getRequest: () => ({ method, url, body, params, user: { id: '11111111-1111-4111-8111-111111111111', tenantId: 't1' }, headers: {} }),
+        getRequest: () => ({
+          method,
+          url,
+          body,
+          params,
+          user: { id: '11111111-1111-4111-8111-111111111111', tenantId: 't1' },
+          headers: {},
+        }),
         getResponse: () => ({}),
       }),
     } as any;
@@ -39,7 +46,14 @@ describe('AuditInterceptor', () => {
     const ctx: ExecutionContext = {
       getType: () => 'http',
       switchToHttp: () => ({
-        getRequest: () => ({ method: 'POST', url: '/v1/properties/1', body: { a: 1 }, params: { id: '1' }, user: { sub, tenantId: 't1' }, headers: {} }),
+        getRequest: () => ({
+          method: 'POST',
+          url: '/v1/properties/1',
+          body: { a: 1 },
+          params: { id: '1' },
+          user: { sub, tenantId: 't1' },
+          headers: {},
+        }),
         getResponse: () => ({}),
       }),
     } as any;
@@ -65,7 +79,14 @@ describe('AuditInterceptor', () => {
     const ctx: ExecutionContext = {
       getType: () => 'http',
       switchToHttp: () => ({
-        getRequest: () => ({ method: 'PATCH', url: '/v1/properties/1', body, params: { id: '1' }, user: { id: '11111111-1111-4111-8111-111111111111' }, headers: {} }),
+        getRequest: () => ({
+          method: 'PATCH',
+          url: '/v1/properties/1',
+          body,
+          params: { id: '1' },
+          user: { id: '11111111-1111-4111-8111-111111111111' },
+          headers: {},
+        }),
         getResponse: () => ({}),
       }),
     } as any;
@@ -93,7 +114,14 @@ describe('AuditInterceptor', () => {
     const ctx: ExecutionContext = {
       getType: () => 'http',
       switchToHttp: () => ({
-        getRequest: () => ({ method: 'PATCH', url: '/v1/properties/1', body, params: { id: '1' }, user: { id: '11111111-1111-4111-8111-111111111111' }, headers: {} }),
+        getRequest: () => ({
+          method: 'PATCH',
+          url: '/v1/properties/1',
+          body,
+          params: { id: '1' },
+          user: { id: '11111111-1111-4111-8111-111111111111' },
+          headers: {},
+        }),
         getResponse: () => ({}),
       }),
     } as any;
@@ -101,11 +129,12 @@ describe('AuditInterceptor', () => {
     const next: CallHandler = { handle: () => of('ok') } as any;
     interceptor.intercept(ctx, next).subscribe(() => {
       const arg = (log.mock.calls[0] && log.mock.calls[0][0]) || {};
-      expect(arg.after).toEqual(expect.objectContaining({ truncated: true, size: expect.any(Number), preview: expect.any(String) }));
+      expect(arg.after).toEqual(
+        expect.objectContaining({ truncated: true, size: expect.any(Number), preview: expect.any(String) }),
+      );
       done();
     });
   });
-  
 
   it('audits with null user/tenant/entity when not present', (done) => {
     const log = jest.fn().mockResolvedValue(undefined);
