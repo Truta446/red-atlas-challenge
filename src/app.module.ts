@@ -18,6 +18,7 @@ import { ListingsModule } from './modules/listings/listings.module';
 import { MetricsInterceptor } from './modules/metrics/interceptors/metrics.interceptor';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { PropertiesModule } from './modules/properties/properties.module';
+import { UsersModule } from './modules/users/users.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 
 @Module({
@@ -25,7 +26,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
     ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule.forRoot({
       pinoHttp: {
-        level: 'info',
+        level: 'warn',
         redact: {
           paths: ['req.headers.authorization', 'req.headers.cookie', 'password'],
           censor: '[Redacted]',
@@ -75,6 +76,18 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
         autoLoadEntities: true,
         synchronize: false,
         logging: false,
+        // Pool tuning: keep per-process pool small; add safe timeouts and recycling
+        extra: {
+          // pg-pool options
+          max: Number(config.get<string>('PG_POOL_MAX', '10')),
+          idleTimeoutMillis: Number(config.get<string>('PG_IDLE_TIMEOUT_MS', '30000')),
+          connectionTimeoutMillis: Number(config.get<string>('PG_CONN_TIMEOUT_MS', '20000')),
+          // recycle connections after N uses to avoid long-lived problematic sessions
+          maxUses: Number(config.get<string>('PG_MAX_USES', '5000')),
+          // server parameters (supported by node-postgres): milliseconds
+          statement_timeout: Number(config.get<string>('PG_STATEMENT_TIMEOUT_MS', '5000')),
+          idle_in_transaction_session_timeout: Number(config.get<string>('PG_IDLE_TX_TIMEOUT_MS', '10000')),
+        },
       }),
     }),
     CacheModule.registerAsync({
@@ -99,6 +112,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
     AuditModule,
     MetricsModule,
     AnalyticsModule,
+    UsersModule,
   ],
   providers: [
     {

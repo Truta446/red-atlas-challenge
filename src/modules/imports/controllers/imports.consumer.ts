@@ -29,22 +29,22 @@ export class ImportsConsumer {
 
     const ackIfPossible = () => {
       try {
-        if (channel && originalMsg) channel.ack(originalMsg);
+        const current = context?.getChannelRef?.();
+        if (channel && originalMsg && current === channel) channel.ack(originalMsg);
       } catch {}
     };
     const nackToRetry = () => {
       try {
         // Requeue=false so message dead-letters to the retry queue (with TTL)
-        if (channel && originalMsg) channel.nack(originalMsg, false, false);
+        const current = context?.getChannelRef?.();
+        if (channel && originalMsg && current === channel) channel.nack(originalMsg, false, false);
       } catch {}
     };
-    const sendToDlqAndAck = () => {
+    // Enviar a DLQ vía DLX: nack con requeue=false evita publicar desde el mismo canal de consumo
+    const nackToDlq = () => {
       try {
-        if (channel && originalMsg) {
-          const payload = Buffer.from(JSON.stringify(message));
-          channel.sendToQueue('imports.batch.dlq', payload, { contentType: 'application/json', persistent: true });
-          channel.ack(originalMsg);
-        }
+        const current = context?.getChannelRef?.();
+        if (channel && originalMsg && current === channel) channel.nack(originalMsg, false, false);
       } catch {}
     };
 
@@ -60,7 +60,7 @@ export class ImportsConsumer {
         }
 
         const { ok, ko } = await this.service.flushBatch(tenantId, rows);
-        // metrics
+
         this.metrics.importsBatchesProcessed.inc({ result: 'ok' }, 1);
         if (ok) this.metrics.importsRowsOk.inc(ok);
         if (ko) this.metrics.importsRowsKo.inc(ko);
@@ -91,7 +91,7 @@ export class ImportsConsumer {
       } catch (lockErr) {
         // If Redis is unavailable or lock fails, proceed without lock to avoid stalling processing
         this.logger.warn(
-          `Lock unavailable for job=${jobId}, proceeding without lock: ${String((lockErr as any)?.message || lockErr)}`,
+          `Lock unavailable for job=${jobId}, proceeding without lock: ${String(lockErr?.message || lockErr)}`,
         );
         await runCritical();
       }
@@ -113,7 +113,7 @@ export class ImportsConsumer {
           `Batch failed permanently after ${count} attempts job=${jobId} seq=${seq}: ${String(e?.message || e)}`,
         );
         this.metrics.importsBatchesProcessed.inc({ result: 'dlq' }, 1);
-        sendToDlqAndAck();
+        nackToDlq();
       } else {
         this.logger.warn(
           `Batch failed (attempt ${count + 1}) job=${jobId} seq=${seq}: ${String(e?.message || e)} - retry with backoff`,
@@ -131,6 +131,7 @@ function getRedisLock(): RedisLock {
   if (_redisLock) return _redisLock;
   const url = process.env.REDIS_URL || 'redis://localhost:6379';
   const client = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 1 });
-  _redisLock = new RedisLock(client, { ttlMs: 10_000, keyPrefix: 'lock:' });
+  // Aumentamos TTL para jobs grandes y reducir colisiones de lock
+  _redisLock = new RedisLock(client, { ttlMs: 60_000, keyPrefix: 'lock:' });
   return _redisLock;
 }

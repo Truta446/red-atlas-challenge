@@ -13,7 +13,14 @@ describe('AuditInterceptor', () => {
     return {
       getType: () => 'http',
       switchToHttp: () => ({
-        getRequest: () => ({ method, url, body, params, user: { id: 'u1', tenantId: 't1' }, headers: {} }),
+        getRequest: () => ({
+          method,
+          url,
+          body,
+          params,
+          user: { id: '11111111-1111-4111-8111-111111111111', tenantId: 't1' },
+          headers: {},
+        }),
         getResponse: () => ({}),
       }),
     } as any;
@@ -26,6 +33,105 @@ describe('AuditInterceptor', () => {
     const next: CallHandler = { handle: () => of('ok') } as any;
     interceptor.intercept(ctx, next).subscribe((v) => {
       expect(v).toBe('ok');
+      done();
+    });
+  });
+
+  it('falls back to user.sub when user.id is absent (UUID required)', (done) => {
+    const log = jest.fn().mockResolvedValue(undefined);
+    const interceptor = new AuditInterceptor();
+    (interceptor as any).audit = { log } as unknown as AuditService;
+
+    const sub = '22222222-2222-4222-8222-222222222222';
+    const ctx: ExecutionContext = {
+      getType: () => 'http',
+      switchToHttp: () => ({
+        getRequest: () => ({
+          method: 'POST',
+          url: '/v1/properties/1',
+          body: { a: 1 },
+          params: { id: '1' },
+          user: { sub, tenantId: 't1' },
+          headers: {},
+        }),
+        getResponse: () => ({}),
+      }),
+    } as any;
+
+    const next: CallHandler = { handle: () => of('ok') } as any;
+    interceptor.intercept(ctx, next).subscribe(() => {
+      expect(log).toHaveBeenCalledWith(expect.objectContaining({ userId: sub }));
+      done();
+    });
+  });
+
+  it('sanitizes circular/stream bodies without truncation', (done) => {
+    const log = jest.fn().mockResolvedValue(undefined);
+    const interceptor = new AuditInterceptor();
+    (interceptor as any).audit = { log } as unknown as AuditService;
+
+    // Build a body with circular ref and a stream-like object (no huge field to avoid truncation)
+    const circular: any = { name: 'c' };
+    circular.self = circular;
+    const streamLike = { pipe: (..._args: unknown[]) => true, readable: true } as any;
+    const body = { circular, file: streamLike };
+
+    const ctx: ExecutionContext = {
+      getType: () => 'http',
+      switchToHttp: () => ({
+        getRequest: () => ({
+          method: 'PATCH',
+          url: '/v1/properties/1',
+          body,
+          params: { id: '1' },
+          user: { id: '11111111-1111-4111-8111-111111111111' },
+          headers: {},
+        }),
+        getResponse: () => ({}),
+      }),
+    } as any;
+
+    const next: CallHandler = { handle: () => of('ok') } as any;
+    interceptor.intercept(ctx, next).subscribe(() => {
+      const arg = log.mock.calls[0]?.[0] || {};
+      expect(arg.after).toBeTruthy();
+      // stream is replaced
+      expect(arg.after.file).toBe('[stream]');
+      // circular marker appears somewhere
+      expect(JSON.stringify(arg.after)).toContain('[circular]');
+      done();
+    });
+  });
+
+  it('truncates very large payloads to a preview object', (done) => {
+    const log = jest.fn().mockResolvedValue(undefined);
+    const interceptor = new AuditInterceptor();
+    (interceptor as any).audit = { log } as unknown as AuditService;
+
+    const huge = 'x'.repeat(12_000);
+    const body = { huge };
+
+    const ctx: ExecutionContext = {
+      getType: () => 'http',
+      switchToHttp: () => ({
+        getRequest: () => ({
+          method: 'PATCH',
+          url: '/v1/properties/1',
+          body,
+          params: { id: '1' },
+          user: { id: '11111111-1111-4111-8111-111111111111' },
+          headers: {},
+        }),
+        getResponse: () => ({}),
+      }),
+    } as any;
+
+    const next: CallHandler = { handle: () => of('ok') } as any;
+    interceptor.intercept(ctx, next).subscribe(() => {
+      const arg = log.mock.calls[0]?.[0] || {};
+      expect(arg.after).toEqual(
+        expect.objectContaining({ truncated: true, size: expect.any(Number), preview: expect.any(String) }),
+      );
       done();
     });
   });
@@ -65,7 +171,7 @@ describe('AuditInterceptor', () => {
         expect.objectContaining({
           method: 'POST',
           path: '/v1/properties/123',
-          userId: 'u1',
+          userId: '11111111-1111-4111-8111-111111111111',
           tenantId: 't1',
           entity: 'properties',
           entityId: '123',
@@ -116,7 +222,7 @@ describe('AuditInterceptor', () => {
           body: { x: 1 },
           params: { id: '42' },
           headers: { 'x-tenant-id': 'tx' },
-          user: { id: 'u1' },
+          user: { id: '11111111-1111-4111-8111-111111111111' },
         }),
         getResponse: () => ({}),
       }),

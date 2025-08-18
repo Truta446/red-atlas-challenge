@@ -14,7 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import type { CurrentUserPayload } from '../../auth/decorators/current-user.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -38,6 +38,20 @@ export class PropertiesController {
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(60)
   @HttpCode(HttpStatus.OK)
+  @ApiQuery({ name: 'sector', required: false, type: String, description: 'Sector/neighborhood' })
+  @ApiQuery({ name: 'type', required: false, type: String, description: 'Property type' })
+  @ApiQuery({ name: 'address', required: false, type: String, description: 'Address (ILIKE)' })
+  @ApiQuery({ name: 'minPrice', required: false, type: Number })
+  @ApiQuery({ name: 'maxPrice', required: false, type: Number })
+  @ApiQuery({ name: 'fromDate', required: false, type: String, description: 'YYYY-MM-DD' })
+  @ApiQuery({ name: 'toDate', required: false, type: String, description: 'YYYY-MM-DD' })
+  @ApiQuery({ name: 'latitude', required: false, type: Number })
+  @ApiQuery({ name: 'longitude', required: false, type: Number })
+  @ApiQuery({ name: 'radiusKm', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['price', 'createdAt', 'distance'] })
+  @ApiQuery({ name: 'order', required: false, enum: ['asc', 'desc'] })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
   public async list(
     @Query() query: QueryPropertiesDto,
     @CurrentUser() user: CurrentUserPayload,
@@ -59,8 +73,8 @@ export class PropertiesController {
   }
 
   @Patch(':id')
-  @Roles('admin')
   @HttpCode(HttpStatus.OK)
+  @Roles('admin', 'user')
   public async update(
     @Param('id') id: string,
     @Body() dto: UpdatePropertyDto,

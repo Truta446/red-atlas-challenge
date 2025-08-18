@@ -4,25 +4,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type { Cache } from 'cache-manager';
 import { Repository } from 'typeorm';
 
+import { decodeIdCursor, encodeCursorPayload, tryDecodeCursorPayload } from '../../../common/utils/cursor';
 import { CreatePropertyDto } from '../dto/create-property.dto';
 import { QueryPropertiesDto } from '../dto/query-properties.dto';
 import { UpdatePropertyDto } from '../dto/update-property.dto';
 import { Property } from '../entities/property.entity';
-
-function encodeCursor(id: string): string {
-  return Buffer.from(id, 'utf8').toString('base64url');
-}
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function decodeCursor(cursor: string): string | null {
-  try {
-    const decoded: string = Buffer.from(cursor, 'base64url').toString('utf8');
-    return isUuid(decoded) ? decoded : null;
-  } catch {
-    return null;
-  }
-}
 
 @Injectable()
 export class PropertiesService {
@@ -134,26 +120,44 @@ export class PropertiesService {
     query: QueryPropertiesDto,
     tenantId: string,
   ): Promise<{ items: Property[]; nextCursor: string | null }> {
+    // Read-through cache (avoid DB under repeated identical queries)
+    const normalize = (q: Record<string, unknown>): string => {
+      const entries = Object.entries(q)
+        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+      return JSON.stringify(entries);
+    };
+    // bump version to v2 due to new cursor format
+    const cacheKey = `tenant:${tenantId}:properties:list:v2:${normalize({
+      sector: query.sector,
+      type: query.type,
+      address: query.address,
+      minPrice: query.minPrice,
+      maxPrice: query.maxPrice,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      latitude: query.latitude,
+      longitude: query.longitude,
+      radiusKm: query.radiusKm,
+      sortBy: query.sortBy,
+      order: query.order,
+      limit: query.limit,
+      cursor: query.cursor,
+    })}`;
+    const cacheAny: any = this.cache as any;
+    if (typeof cacheAny?.get === 'function') {
+      const cached = (await cacheAny.get(cacheKey)) as { items: Property[]; nextCursor: string | null } | undefined;
+      if (cached) return cached;
+    }
+
     const qb = this.repo.createQueryBuilder('p');
     qb.where('p.deletedAt IS NULL');
 
     // Scope by tenant (from auth)
     qb.andWhere('p.tenantId = :tenantId', { tenantId });
 
-    // Reduce selected columns to cut payload/CPU
-    qb.select([
-      'p.id',
-      'p.tenantId',
-      'p.createdAt',
-      'p.updatedAt',
-      'p.address',
-      'p.sector',
-      'p.type',
-      'p.price',
-      'p.location',
-    ]);
-    // Also expose GeoJSON representation for clients that expect GeoJSON
-    qb.addSelect('ST_AsGeoJSON(p.location)', 'locationGeoJSON');
+    // Select minimal columns by default (omit geometry to save CPU/payload)
+    qb.select(['p.id', 'p.tenantId', 'p.createdAt', 'p.updatedAt', 'p.address', 'p.sector', 'p.type', 'p.price']);
 
     if (query.sector) qb.andWhere('p.sector = :sector', { sector: query.sector });
     if (query.type) qb.andWhere('p.type = :type', { type: query.type });
@@ -165,22 +169,26 @@ export class PropertiesService {
     if (query.fromDate) qb.andWhere('p.createdAt >= :fromDate', { fromDate: query.fromDate });
     if (query.toDate) qb.andWhere('p.createdAt <= :toDate', { toDate: query.toDate });
 
-    if (
-      typeof query.latitude === 'number' &&
-      typeof query.longitude === 'number' &&
-      typeof query.radiusKm === 'number'
-    ) {
+    const hasGeoFilter =
+      typeof query.latitude === 'number' && typeof query.longitude === 'number' && typeof query.radiusKm === 'number';
+    if (hasGeoFilter) {
+      const radiusKm: number = Number(query.radiusKm);
       qb.andWhere(`ST_DWithin(p.location::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)`, {
         lng: query.longitude,
         lat: query.latitude,
-        meters: query.radiusKm * 1000,
+        meters: radiusKm * 1000,
       });
       if (query.sortBy === 'distance') {
-        // KNN order by proximity using GiST index
+        // KNN order by proximity using GiST index on geography (matches idx_prop_location_geog)
         qb.addOrderBy('p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)', 'ASC').setParameters({
           lngOrder: query.longitude,
           latOrder: query.latitude,
         });
+        // Also project exact distance for cursor filtering
+        qb.addSelect(
+          'ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)::geography)',
+          'distanceOrder',
+        );
       }
     }
 
@@ -188,24 +196,88 @@ export class PropertiesService {
     const allowedSort = new Set(['price', 'createdAt', 'distance']);
     const sortByRaw = query.sortBy && allowedSort.has(query.sortBy) ? (query.sortBy as string) : 'createdAt';
     const order: 'ASC' | 'DESC' = (query.order || 'asc').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
-    // When geo distance is present we already ordered by distance first; add secondary order for determinism
+    // When not distance, order by field + id for determinism and index usage
     if (sortByRaw !== 'distance') {
       qb.addOrderBy(`p.${sortByRaw}` as any, order);
+      qb.addOrderBy('p.id', order);
+    } else {
+      // distance ordering already added above; ensure secondary by id
+      qb.addOrderBy('p.id', 'ASC');
     }
 
     const limit: number = Math.min(query.limit || 25, 100);
     if (query.cursor) {
-      const afterId: string | null = decodeCursor(query.cursor);
-      if (afterId) {
-        qb.andWhere('p.id > :afterId', { afterId });
+      const payload = tryDecodeCursorPayload(query.cursor);
+      if (payload) {
+        // Ensure cursor matches current sort; otherwise ignore to avoid mismatched paging
+        if (payload.sortBy === sortByRaw && payload.order === order) {
+          if (sortByRaw === 'createdAt') {
+            const cmp = order === 'ASC' ? '>' : '<';
+            qb.andWhere(`(p.created_at, p.id) ${cmp} (:cVal, :cId)`, {
+              cVal: payload.lastValue,
+              cId: payload.lastId,
+            });
+          } else if (sortByRaw === 'price') {
+            const cmp = order === 'ASC' ? '>' : '<';
+            qb.andWhere(`(p.price, p.id) ${cmp} (:cVal, :cId)`, {
+              cVal: payload.lastValue,
+              cId: payload.lastId,
+            });
+          } else if (sortByRaw === 'distance' && hasGeoFilter) {
+            // Use computed distance expression for comparison
+            const cmp = '>';
+            qb.andWhere(
+              `(
+                ST_Distance(p.location::geography, ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)::geography),
+                p.id
+              ) ${cmp} (:cVal, :cId)`,
+              {
+                cVal: payload.lastValue,
+                cId: payload.lastId,
+              },
+            );
+          }
+        }
+      } else {
+        // Legacy cursor: only id. Keep backward compatibility
+        const afterId: string | null = decodeIdCursor(query.cursor);
+        if (afterId) {
+          const cmp = order === 'ASC' ? '>' : '<';
+          qb.andWhere(`p.id ${cmp} :afterId`, { afterId });
+        }
       }
     }
     qb.take(limit + 1);
 
+    // Only project geometry/GeoJSON when explicitly needed (geo filter or distance sort)
+    if (hasGeoFilter || sortByRaw === 'distance') {
+      // Add location fields late to keep planner unaffected when not needed
+      qb.addSelect('p.location');
+      qb.addSelect('ST_AsGeoJSON(p.location)', 'locationGeoJSON');
+    }
+
     const rows: Property[] = await qb.getMany();
     const hasMore: boolean = rows.length > limit;
     const items: Property[] = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor: string | null = hasMore ? encodeCursor(items[items.length - 1].id) : null;
-    return { items, nextCursor };
+    let nextCursor: string | null = null;
+    if (hasMore) {
+      const last = items[items.length - 1] as any;
+      if (sortByRaw === 'createdAt') {
+        nextCursor = encodeCursorPayload({ sortBy: 'createdAt', order, lastValue: last.createdAt, lastId: last.id });
+      } else if (sortByRaw === 'price') {
+        nextCursor = encodeCursorPayload({ sortBy: 'price', order, lastValue: last.price, lastId: last.id });
+      } else if (sortByRaw === 'distance') {
+        // distanceOrder is selected only when needed; default to null if absent
+        const lastDist = last?.distanceOrder ?? null;
+        nextCursor = encodeCursorPayload({ sortBy: 'distance', order: 'ASC', lastValue: lastDist, lastId: last.id });
+      }
+    }
+    const result = { items, nextCursor };
+
+    if (typeof cacheAny?.set === 'function') {
+      await cacheAny.set(cacheKey, result, 30_000);
+    }
+
+    return result;
   }
 }

@@ -8,9 +8,7 @@ import { Property } from '../../properties/entities/property.entity';
 export class AnalyticsService {
   @InjectRepository(Property) private readonly props: Repository<Property>;
 
-  public async distributionBySectorType(
-    tenantId: string,
-  ): Promise<Array<{ sector: string; type: string; count: number }>> {
+  public async distributionBySectorType(tenantId: string): Promise<{ sector: string; type: string; count: number }[]> {
     const rows = await this.props.query(
       `SELECT sector, type, COUNT(*)::int AS count
        FROM properties
@@ -25,7 +23,7 @@ export class AnalyticsService {
   public async monthlyPercentiles(
     tenantId: string,
     months: number = 12,
-  ): Promise<Array<{ month: string; p50: number; p90: number }>> {
+  ): Promise<{ month: string; p50: number; p90: number }[]> {
     // Uses created_at for bucketing; replace if business requires another timestamp
     const rows = await this.props.query(
       `WITH months AS (
@@ -53,7 +51,7 @@ export class AnalyticsService {
   public async sectorYoYValuation(
     tenantId: string,
     year?: number,
-  ): Promise<Array<{ sector: string; yoy: number; year: number; prev_year: number }>> {
+  ): Promise<{ sector: string; yoy: number; year: number; prev_year: number }[]> {
     // Choose current year by default
     const targetYear = year ?? new Date().getFullYear();
     const rows = await this.props.query(

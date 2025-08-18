@@ -43,7 +43,7 @@ describe('ImportsConsumer', () => {
     }).compile();
 
     consumer = module.get(ImportsConsumer);
-    service = module.get(ImportsService) as any;
+    service = module.get(ImportsService);
     jobs = module.get(getRepositoryToken(ImportJob));
     batches = module.get(getRepositoryToken(ImportProcessedBatch));
   });
@@ -72,10 +72,11 @@ describe('ImportsConsumer', () => {
     const nack = jest.fn();
     const ack = jest.fn();
     const sendToQueue = jest.fn();
+    const ch = { nack, ack, sendToQueue };
     const headers = { 'x-death': [{ count: 0 }] };
     const message: any = { properties: { headers } };
     const ctx: any = {
-      getChannelRef: () => ({ nack, ack, sendToQueue }),
+      getChannelRef: () => ch,
       getMessage: () => message,
     };
 
@@ -87,7 +88,7 @@ describe('ImportsConsumer', () => {
     expect(sendToQueue).not.toHaveBeenCalled();
   });
 
-  it('sends to DLQ and acks when retries exceeded', async () => {
+  it('nacks to DLQ when retries exceeded', async () => {
     (batches.findOne as jest.Mock).mockResolvedValue(null);
     (service.flushBatch as jest.Mock).mockRejectedValue(new Error('boom'));
 
@@ -96,20 +97,17 @@ describe('ImportsConsumer', () => {
     const sendToQueue = jest.fn();
     const headers = { 'x-death': [{ count: 3 }, { count: 3 }] }; // total 6 >= max(5)
     const message: any = { properties: { headers } };
+    const ch = { nack, ack, sendToQueue };
     const ctx: any = {
-      getChannelRef: () => ({ nack, ack, sendToQueue }),
+      getChannelRef: () => ch,
       getMessage: () => message,
     };
 
     await consumer.handleBatch({ jobId: 'j1', tenantId: 't', seq: 1, rows: [{}] as any }, ctx);
 
-    expect(sendToQueue).toHaveBeenCalledWith(
-      'imports.batch.dlq',
-      expect.any(Buffer),
-      expect.objectContaining({ contentType: 'application/json', persistent: true }),
-    );
-    expect(ack).toHaveBeenCalledWith(message);
-    expect(nack).not.toHaveBeenCalled();
+    expect(nack).toHaveBeenCalledWith(message, false, false);
+    expect(sendToQueue).not.toHaveBeenCalled();
+    expect(ack).not.toHaveBeenCalled();
   });
 
   it('retries when header parsing fails (count defaults to 0)', async () => {
@@ -128,8 +126,9 @@ describe('ImportsConsumer', () => {
         },
       },
     );
+    const ch = { nack, ack, sendToQueue };
     const ctx: any = {
-      getChannelRef: () => ({ nack, ack, sendToQueue }),
+      getChannelRef: () => ch,
       getMessage: () => proxyMsg,
     };
 

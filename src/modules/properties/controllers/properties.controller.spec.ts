@@ -39,7 +39,7 @@ describe('PropertiesController', () => {
       .compile();
 
     controller = module.get(PropertiesController);
-    service = module.get(PropertiesService) as any;
+    service = module.get(PropertiesService);
   });
 
   it('list forwards query and tenant', async () => {

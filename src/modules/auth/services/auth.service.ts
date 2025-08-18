@@ -5,7 +5,7 @@ import { createHash } from 'crypto';
 import { Repository } from 'typeorm';
 
 import { hashPassword, verifyPassword } from '../../../common/security/password.util';
-import { User } from '../../users/user.entity';
+import { User } from '../../users/entities/user.entity';
 
 export interface JwtPayload {
   sub: string; // user id
@@ -77,7 +77,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
     const user = await this.users.findOne({ where: { id: decoded.sub } });
-    if (!user || !user.refreshTokenHash) throw new UnauthorizedException('Refresh not allowed');
+    if (!user?.refreshTokenHash) throw new UnauthorizedException('Refresh not allowed');
     // rotation: must match stored hash, then replace it
     if (this.hashToken(refreshToken) !== user.refreshTokenHash) throw new UnauthorizedException('Token rotated');
 

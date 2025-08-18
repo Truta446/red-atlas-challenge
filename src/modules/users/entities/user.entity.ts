@@ -1,6 +1,6 @@
 import { Column, Entity, Index } from 'typeorm';
 
-import { BaseEntityWithTenant } from '../../common/entities/base.entity';
+import { BaseEntityWithTenant } from '../../../common/entities/base.entity';
 
 export type UserRole = 'user' | 'admin';
 
