@@ -13,7 +13,13 @@ async function bootstrap(): Promise<void> {
     options: {
       urls: [url],
       queue: 'imports.batch',
-      queueOptions: { durable: true },
+      queueOptions: {
+        durable: true,
+        arguments: {
+          'x-dead-letter-exchange': '',
+          'x-dead-letter-routing-key': 'imports.retry.10s',
+        },
+      },
       prefetchCount: 8,
     },
   });

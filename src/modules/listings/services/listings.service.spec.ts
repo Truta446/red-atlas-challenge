@@ -19,6 +19,7 @@ function createQB<T>(overrides: Partial<Record<string, any>> = {}) {
     leftJoin: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     addOrderBy: jest.fn().mockReturnThis(),
+    setParameters: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     getMany: jest.fn(),
   };
@@ -173,5 +174,40 @@ describe('ListingsService', () => {
       (c: any[]) => typeof c[0] === 'string' && c[0].includes('l.id > :afterId'),
     );
     expect(hasAfter).toBe(false);
+  });
+
+  it('findMany applies property filters (sector/type/address) and geo radius with distance ordering', async () => {
+    const qb = createQB({});
+    qb.getMany.mockResolvedValue([{ id: 'id1' }] as any);
+    (listingRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    await service.findMany(
+      {
+        sector: 'Centro',
+        type: 'apartment',
+        address: 'Alameda',
+        latitude: -23.56,
+        longitude: -46.64,
+        radiusKm: 5,
+        sortBy: 'distance',
+        order: 'desc',
+        limit: 10,
+      } as any,
+      tenantId,
+    );
+
+    const clauses = qb.andWhere.mock.calls.map((c: any[]) => String(c[0]));
+    expect(clauses.some((s: string) => s.includes('p.sector = :sector'))).toBe(true);
+    expect(clauses.some((s: string) => s.includes('p.type = :ptype'))).toBe(true);
+    expect(clauses.some((s: string) => s.includes('p.address ILIKE :addr'))).toBe(true);
+    // Geo clause present
+    expect(clauses.some((s: string) => s.includes('ST_DWithin'))).toBe(true);
+    // KNN ordering first, then secondary createdAt with requested order
+    expect(qb.addOrderBy).toHaveBeenNthCalledWith(
+      1,
+      'p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)',
+      'ASC',
+    );
+    expect(qb.addOrderBy).toHaveBeenNthCalledWith(2, 'l.createdAt', 'DESC');
   });
 });

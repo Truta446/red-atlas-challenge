@@ -53,7 +53,7 @@ export class ListingsService {
   }
 
   public async findOne(id: string, tenantId: string): Promise<Listing | null> {
-    return this.repo.findOne({ where: { id, tenantId } });
+    return this.repo.findOne({ where: { id, tenantId }, relations: ['property'] });
   }
 
   public async update(id: string, dto: UpdateListingDto, tenantId: string): Promise<Listing> {
@@ -85,17 +85,51 @@ export class ListingsService {
     qb.where('l.deletedAt IS NULL');
     qb.andWhere('l.tenantId = :tenantId', { tenantId });
 
-    qb.leftJoin('l.property', 'p');
+    qb.leftJoinAndSelect('l.property', 'p');
 
     qb.select(['l.id', 'l.tenantId', 'l.createdAt', 'l.updatedAt', 'l.status', 'l.price']);
+    qb.addSelect(['p.id', 'p.address', 'p.sector', 'p.type']);
 
     if (query.status) qb.andWhere('l.status = :status', { status: query.status });
     if (query.propertyId) qb.andWhere('p.id = :pid', { pid: query.propertyId });
     if (typeof query.minPrice === 'number') qb.andWhere('l.price >= :min', { min: query.minPrice });
     if (typeof query.maxPrice === 'number') qb.andWhere('l.price <= :max', { max: query.maxPrice });
 
-    const order: 'ASC' | 'DESC' = (query.order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-    qb.addOrderBy('l.createdAt', order);
+    // Filters via property attributes
+    if (query.sector) qb.andWhere('p.sector = :sector', { sector: query.sector });
+    if (query.type) qb.andWhere('p.type = :ptype', { ptype: query.type });
+    if (query.address) qb.andWhere('p.address ILIKE :addr', { addr: `%${query.address}%` });
+
+    // Date range on listing creation
+    if (query.fromDate) qb.andWhere('l.createdAt >= :fromDate', { fromDate: query.fromDate });
+    if (query.toDate) qb.andWhere('l.createdAt <= :toDate', { toDate: query.toDate });
+
+    // Geo radius using property's location; order by distance if requested
+    const hasGeo: boolean =
+      typeof (query as any).latitude === 'number' &&
+      typeof (query as any).longitude === 'number' &&
+      typeof (query as any).radiusKm === 'number';
+    if (hasGeo) {
+      qb.andWhere(
+        'ST_DWithin(p.location::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)',
+        { lng: (query as any).longitude, lat: (query as any).latitude, meters: ((query as any).radiusKm as number) * 1000 },
+      );
+    }
+
+    const allowedSort = new Set(['createdAt', 'price', 'distance']);
+    const sortByRaw = (query as any).sortBy && allowedSort.has((query as any).sortBy) ? ((query as any).sortBy as string) : 'createdAt';
+    const order: 'ASC' | 'DESC' = ((query as any).order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+    if (sortByRaw === 'distance' && hasGeo) {
+      qb.addOrderBy('p.location <-> ST_SetSRID(ST_MakePoint(:lngOrder, :latOrder), 4326)', 'ASC').setParameters({
+        lngOrder: (query as any).longitude,
+        latOrder: (query as any).latitude,
+      });
+      // Secondary for determinism
+      qb.addOrderBy('l.createdAt', order);
+    } else {
+      qb.addOrderBy(`l.${sortByRaw}` as any, order);
+    }
 
     const limit: number = Math.min(query.limit || 25, 100);
     if (query.cursor) {

@@ -134,26 +134,40 @@ export class PropertiesService {
     query: QueryPropertiesDto,
     tenantId: string,
   ): Promise<{ items: Property[]; nextCursor: string | null }> {
+    // Read-through cache (avoid DB under repeated identical queries)
+    const normalize = (q: Record<string, unknown>): string => {
+      const entries = Object.entries(q)
+        .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+      return JSON.stringify(entries);
+    };
+    const cacheKey = `tenant:${tenantId}:properties:list:v1:${normalize({
+      sector: query.sector,
+      type: query.type,
+      address: query.address,
+      minPrice: query.minPrice,
+      maxPrice: query.maxPrice,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+      latitude: query.latitude,
+      longitude: query.longitude,
+      radiusKm: query.radiusKm,
+      sortBy: query.sortBy,
+      order: query.order,
+      limit: query.limit,
+      cursor: query.cursor,
+    })}`;
+    const cached = await this.cache.get<{ items: Property[]; nextCursor: string | null }>(cacheKey);
+    if (cached) return cached;
+
     const qb = this.repo.createQueryBuilder('p');
     qb.where('p.deletedAt IS NULL');
 
     // Scope by tenant (from auth)
     qb.andWhere('p.tenantId = :tenantId', { tenantId });
 
-    // Reduce selected columns to cut payload/CPU
-    qb.select([
-      'p.id',
-      'p.tenantId',
-      'p.createdAt',
-      'p.updatedAt',
-      'p.address',
-      'p.sector',
-      'p.type',
-      'p.price',
-      'p.location',
-    ]);
-    // Also expose GeoJSON representation for clients that expect GeoJSON
-    qb.addSelect('ST_AsGeoJSON(p.location)', 'locationGeoJSON');
+    // Select minimal columns by default (omit geometry to save CPU/payload)
+    qb.select(['p.id', 'p.tenantId', 'p.createdAt', 'p.updatedAt', 'p.address', 'p.sector', 'p.type', 'p.price']);
 
     if (query.sector) qb.andWhere('p.sector = :sector', { sector: query.sector });
     if (query.type) qb.andWhere('p.type = :type', { type: query.type });
@@ -165,15 +179,16 @@ export class PropertiesService {
     if (query.fromDate) qb.andWhere('p.createdAt >= :fromDate', { fromDate: query.fromDate });
     if (query.toDate) qb.andWhere('p.createdAt <= :toDate', { toDate: query.toDate });
 
-    if (
+    const hasGeoFilter =
       typeof query.latitude === 'number' &&
       typeof query.longitude === 'number' &&
-      typeof query.radiusKm === 'number'
-    ) {
+      typeof query.radiusKm === 'number';
+    if (hasGeoFilter) {
+      const radiusKm: number = Number(query.radiusKm);
       qb.andWhere(`ST_DWithin(p.location::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)`, {
         lng: query.longitude,
         lat: query.latitude,
-        meters: query.radiusKm * 1000,
+        meters: radiusKm * 1000,
       });
       if (query.sortBy === 'distance') {
         // KNN order by proximity using GiST index
@@ -202,10 +217,20 @@ export class PropertiesService {
     }
     qb.take(limit + 1);
 
+    // Only project geometry/GeoJSON when explicitly needed (geo filter or distance sort)
+    if (hasGeoFilter || sortByRaw === 'distance') {
+      // Add location fields late to keep planner unaffected when not needed
+      qb.addSelect('p.location');
+      qb.addSelect('ST_AsGeoJSON(p.location)', 'locationGeoJSON');
+    }
+
     const rows: Property[] = await qb.getMany();
     const hasMore: boolean = rows.length > limit;
     const items: Property[] = hasMore ? rows.slice(0, limit) : rows;
     const nextCursor: string | null = hasMore ? encodeCursor(items[items.length - 1].id) : null;
-    return { items, nextCursor };
+    const result = { items, nextCursor };
+    // Short TTL cache (helps p95 with sustained identical queries)
+    await this.cache.set(cacheKey, result, 30_000);
+    return result;
   }
 }
