@@ -86,9 +86,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
           maxUses: Number(config.get<string>('PG_MAX_USES', '5000')),
           // server parameters (supported by node-postgres): milliseconds
           statement_timeout: Number(config.get<string>('PG_STATEMENT_TIMEOUT_MS', '5000')),
-          idle_in_transaction_session_timeout: Number(
-            config.get<string>('PG_IDLE_TX_TIMEOUT_MS', '10000'),
-          ),
+          idle_in_transaction_session_timeout: Number(config.get<string>('PG_IDLE_TX_TIMEOUT_MS', '10000')),
         },
       }),
     }),
