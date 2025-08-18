@@ -29,7 +29,7 @@ function createQB<T>(overrides: Partial<Record<string, any>> = {}) {
     select: jest.fn().mockReturnThis(),
     getMany: jest.fn(),
   };
-  return { ...state, ...overrides } as any;
+  return { ...state, ...overrides };
 }
 
 describe('PropertiesService', () => {
@@ -167,7 +167,7 @@ describe('PropertiesService', () => {
     ] as any);
     (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
     const setSpy = jest.fn();
-    (cache as any).set = setSpy;
+    cache.set = setSpy;
     const res = await service.findMany(
       { sortBy: 'distance', order: 'asc', limit: 1, latitude: -23.5, longitude: -46.6, radiusKm: 3 } as any,
       tenantId,
@@ -282,7 +282,7 @@ describe('PropertiesService', () => {
 
   it('findMany returns cached result when cache hit', async () => {
     const cached = { items: [{ id: 'c1' }] as any, nextCursor: null };
-    (cache as any).get = jest.fn().mockResolvedValue(cached);
+    cache.get = jest.fn().mockResolvedValue(cached);
     const qb = createQB();
     (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
     const res = await service.findMany({ limit: 2 } as any, tenantId);

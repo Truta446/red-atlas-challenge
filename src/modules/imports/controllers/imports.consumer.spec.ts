@@ -43,7 +43,7 @@ describe('ImportsConsumer', () => {
     }).compile();
 
     consumer = module.get(ImportsConsumer);
-    service = module.get(ImportsService) as any;
+    service = module.get(ImportsService);
     jobs = module.get(getRepositoryToken(ImportJob));
     batches = module.get(getRepositoryToken(ImportProcessedBatch));
   });

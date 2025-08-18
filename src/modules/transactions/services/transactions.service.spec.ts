@@ -23,7 +23,7 @@ function createQB<T>(overrides: Partial<Record<string, any>> = {}) {
     take: jest.fn().mockReturnThis(),
     getMany: jest.fn(),
   };
-  return { ...state, ...overrides } as any;
+  return { ...state, ...overrides };
 }
 
 describe('TransactionsService', () => {
