@@ -420,6 +420,9 @@ Algunas vistas útiles para entender y comunicar el estado del sistema. Podés a
 - Pruebas unitarias:
   - Módulos/servicios: ![Unit tests 1](docs/screenshots/unit-test-1.png)
   - Cobertura/summary: ![Unit tests 2](docs/screenshots/unit-test-2.png)
+- Arquitectura (C4 — Contenedores):
+  - Fuente: `docs/diagrams/c4-containers.puml`
+  - Ejemplo: ![C4 Contenedores](docs/screenshots/c4-containers.png)
 - Importaciones (flujo):
   - Diagrama: `docs/diagrams/imports-flow.puml` (PlantUML)
   - Ejemplo: ![Imports flow](docs/screenshots/imports-flow.jpeg)

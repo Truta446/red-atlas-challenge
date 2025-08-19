@@ -1,0 +1,43 @@
+@startuml c4-containers
+' C4 Container Diagram for Red Atlas — API Inmobiliaria
+' This uses C4-PlantUML. Render with PlantUML connected to the internet, or vendor the includes locally.
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title Red Atlas — Diagrama C4 (Nivel 2: Contenedores)
+
+Person(user, "Usuario", "Explora la API, sube CSV para importaciones")
+
+System_Boundary(s1, "Red Atlas — API Inmobiliaria") {
+  Container(api, "API (NestJS + Fastify)", "Node.js", "Expone REST /v1 (Swagger), Auth JWT (access+refresh), CRUD (Properties, Listings, Transactions), caching y métricas (/v1/metrics)")
+  Container(worker, "Imports Worker (NestJS)", "Node.js", "Consume batches desde RabbitMQ, valida/transforma y persiste; expone métricas para Prometheus")
+  ContainerDb(db, "PostgreSQL + PostGIS", "PostgreSQL", "Datos transaccionales, entidades geo y jobs de importación")
+  Container(cache, "Redis", "Redis", "Caché read-through, locking (RedisLock) para procesos de importación")
+  Container(queue, "RabbitMQ", "AMQP 0-9-1", "Colas: imports.batch, retry (TTL), DLQ; tópicos para importaciones asíncronas")
+}
+
+System_Ext(prom, "Prometheus / Grafana", "Observabilidad", "Scrapea métricas y grafica dashboards")
+
+' Relaciones principales
+Rel(user, api, "HTTP/JSON", "TLS")
+Rel(api, db, "SQL (TypeORM)")
+Rel(api, cache, "GET/SET (caché)")
+Rel(api, queue, "Publish batches (AMQP)")
+Rel(worker, queue, "Consume (AMQP)")
+Rel(worker, db, "SQL (bulk insert/update)")
+Rel(prom, api, "Scrape /v1/metrics")
+Rel(prom, worker, "Scrape /v1/metrics")
+
+' Notas
+UpdateElementStyle(api, $bgColor="#1168bd", $fontColor="white")
+UpdateElementStyle(worker, $bgColor="#438dd5", $fontColor="white")
+UpdateElementStyle(db, $bgColor="#438dd5", $fontColor="white")
+UpdateElementStyle(cache, $bgColor="#438dd5", $fontColor="white")
+UpdateElementStyle(queue, $bgColor="#438dd5", $fontColor="white")
+UpdateElementStyle(prom, $bgColor="#999999", $fontColor="white")
+
+SHOW_LEGEND()
+
+@enduml
