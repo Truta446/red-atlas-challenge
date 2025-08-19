@@ -60,6 +60,16 @@ describe('PropertiesService', () => {
     repo = module.get(getRepositoryToken(Property));
   });
 
+  it('create throws when no id returned from insert', async () => {
+    const insertQB = createQB();
+    insertQB.execute.mockResolvedValue({ identifiers: [], raw: [] });
+    (repo.createQueryBuilder as jest.Mock).mockReturnValueOnce(insertQB);
+
+    await expect(
+      service.create({ address: 'A', sector: 'S', type: 'apartment', price: 100, latitude: 1, longitude: 2 } as any, tenantId),
+    ).rejects.toThrow('Failed to create property (no id returned)');
+  });
+
   it('findMany applies all simple filters and sorts by createdAt ASC when requested', async () => {
     const qb = createQB();
     qb.getMany.mockResolvedValue([{ id: 'x1' }] as any);

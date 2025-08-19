@@ -47,7 +47,7 @@ export class ImportsService {
     const rl = createInterface({ input: stream, crlfDelay: Infinity });
     let header: string[] | null = null;
     const batch: CsvRow[] = [];
-    const batchSize = 1000;
+    const batchSize = 100;
     let seq = 0;
     let processed = 0;
     let failed = 0;

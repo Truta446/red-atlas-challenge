@@ -59,10 +59,11 @@ describe('ImportsController', () => {
   });
 
   it('create enqueues import and returns job id/status', async () => {
-    const req: any = { headers: { 'content-type': 'text/csv' }, raw: Readable.from(['col1,col2\n']) };
+    const stream = Readable.from(['col1,col2\n']);
+    const req: any = { headers: { 'content-type': 'text/csv' }, raw: stream, body: stream };
     (service.enqueueImport as any).mockResolvedValue({ id: 'job-1', status: 'queued' });
     const res = await controller.create(req, 'idem-1', tenantUser);
-    expect(service.enqueueImport).toHaveBeenCalledWith('tenant-a', 'idem-1', req.raw);
+    expect(service.enqueueImport).toHaveBeenCalledWith('tenant-a', 'idem-1', req.body);
     expect(res).toEqual({ id: 'job-1', status: 'queued' });
   });
 

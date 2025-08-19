@@ -69,6 +69,35 @@ describe('TransactionsService', () => {
     listRepo = module.get(getRepositoryToken(Listing));
   });
 
+  it('findMany uses leftJoinAndSelect when available and projects extra selects', async () => {
+    const qb = createQB({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+    });
+    qb.getMany.mockResolvedValue([{ id: 'id1' }] as any);
+    (txRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    await service.findMany({ limit: 1 } as any, tenantId);
+
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('t.property', 'p');
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('t.listing', 'l');
+    // addSelect called for property and listing fields
+    const calls = (qb.addSelect as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(calls.some((x: any) => Array.isArray(x) && x.includes('p.address'))).toBe(true);
+    expect(calls.some((x: any) => Array.isArray(x) && x.includes('l.status'))).toBe(true);
+  });
+
+  it('findMany falls back to leftJoin when leftJoinAndSelect is not available', async () => {
+    const qb = createQB({ leftJoin: jest.fn().mockReturnThis() });
+    qb.getMany.mockResolvedValue([{ id: 'id1' }] as any);
+    (txRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    await service.findMany({ limit: 1 } as any, tenantId);
+
+    expect(qb.leftJoin).toHaveBeenCalledWith('t.property', 'p');
+    expect(qb.leftJoin).toHaveBeenCalledWith('t.listing', 'l');
+  });
+
   it('findMany applies filters and asc ordering', async () => {
     const qb = createQB({});
     qb.getMany.mockResolvedValue([{ id: 'id1' }, { id: 'id2' }] as any);

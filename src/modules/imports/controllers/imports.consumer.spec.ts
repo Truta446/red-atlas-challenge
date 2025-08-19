@@ -48,6 +48,37 @@ describe('ImportsConsumer', () => {
     batches = module.get(getRepositoryToken(ImportProcessedBatch));
   });
 
+  it('logs when ack throws on duplicate batch', async () => {
+    (batches.findOne as jest.Mock).mockResolvedValue({ jobId: 'j1', seq: 1 } as any);
+    const ack = jest.fn(() => {
+      throw new Error('ack fail');
+    });
+    const ch = { ack, nack: jest.fn(), sendToQueue: jest.fn() };
+    const ctx: any = {
+      getChannelRef: () => ch,
+      getMessage: () => ({ properties: { headers: {} } }),
+    };
+    await consumer.handleBatch({ jobId: 'j1', tenantId: 't', seq: 1, rows: [] }, ctx);
+    expect(ack).toHaveBeenCalled();
+  });
+
+  it('logs when nack throws on retry path', async () => {
+    (batches.findOne as jest.Mock).mockResolvedValue(null);
+    (service.flushBatch as jest.Mock).mockRejectedValue(new Error('boom'));
+    const nack = jest.fn(() => {
+      throw new Error('nack fail');
+    });
+    const ch = { ack: jest.fn(), nack, sendToQueue: jest.fn() };
+    const headers = { 'x-death': [{ count: 0 }] };
+    const message: any = { properties: { headers } };
+    const ctx: any = {
+      getChannelRef: () => ch,
+      getMessage: () => message,
+    };
+    await consumer.handleBatch({ jobId: 'j1', tenantId: 't', seq: 1, rows: [{}] as any }, ctx);
+    expect(nack).toHaveBeenCalled();
+  });
+
   it('does not increment row metrics when ok=0 and ko=0', async () => {
     (batches.findOne as jest.Mock).mockResolvedValue(null);
     (service.flushBatch as jest.Mock).mockResolvedValue({ ok: 0, ko: 0 });
