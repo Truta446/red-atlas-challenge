@@ -22,7 +22,9 @@ export class ImportsRmqTopology implements OnModuleInit {
       }
     }
     if (!url) {
-      this.logger.warn('RABBITMQ_URL not set and could not construct from RABBITMQ_HOST/RABBITMQ_PASSWORD; skipping RMQ topology assertion');
+      this.logger.warn(
+        'RABBITMQ_URL not set and could not construct from RABBITMQ_HOST/RABBITMQ_PASSWORD; skipping RMQ topology assertion',
+      );
       return;
     }
 

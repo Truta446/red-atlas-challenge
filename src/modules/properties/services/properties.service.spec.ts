@@ -66,7 +66,10 @@ describe('PropertiesService', () => {
     (repo.createQueryBuilder as jest.Mock).mockReturnValueOnce(insertQB);
 
     await expect(
-      service.create({ address: 'A', sector: 'S', type: 'apartment', price: 100, latitude: 1, longitude: 2 } as any, tenantId),
+      service.create(
+        { address: 'A', sector: 'S', type: 'apartment', price: 100, latitude: 1, longitude: 2 } as any,
+        tenantId,
+      ),
     ).rejects.toThrow('Failed to create property (no id returned)');
   });
 
