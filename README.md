@@ -155,7 +155,7 @@ OpenAPI/Swagger: disponible en `/docs` (Bearer auth). Prefijo de rutas: `/v1`.
 
   # ejemplo: GET /v1/properties con filtros y paginación
   autocannon -c 200 -d 60 -p 1 \
-    -H "Authorization: Bearer <token> \
+    -H "Authorization: Bearer <TOKEN>" \
     "http://localhost:3000/v1/properties?limit=25&order=desc&sector=central"
   ```
 
@@ -231,7 +231,7 @@ Usá un token JWT válido en el header `Authorization`. Reemplazá `$TOKEN` por 
 
 ```bash
 curl -v -X POST "http://localhost:3000/v1/imports" \
-  -H "Authorization: Bearer <TOKEN> \
+  -H "Authorization: Bearer <TOKEN>" \
   -H "Idempotency-Key: job-csv-001" \
   -H "Content-Type: text/csv" \
   --data-binary @data/properties-import.csv

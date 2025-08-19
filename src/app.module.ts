@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheableMemory } from 'cacheable';
 import { Keyv } from 'keyv';
 import { LoggerModule } from 'nestjs-pino';
+import { HealthController } from './health.controller';
 
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -139,5 +140,6 @@ import { UsersModule } from './modules/users/users.module';
       useClass: MetricsInterceptor,
     },
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
