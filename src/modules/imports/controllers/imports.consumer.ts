@@ -31,21 +31,27 @@ export class ImportsConsumer {
       try {
         const current = context?.getChannelRef?.();
         if (channel && originalMsg && current === channel) channel.ack(originalMsg);
-      } catch {}
+      } catch (e) {
+        this.logger.error(`Failed to ack message: ${String(e?.message || e)}`);
+      }
     };
     const nackToRetry = () => {
       try {
         // Requeue=false so message dead-letters to the retry queue (with TTL)
         const current = context?.getChannelRef?.();
         if (channel && originalMsg && current === channel) channel.nack(originalMsg, false, false);
-      } catch {}
+      } catch (e) {
+        this.logger.error(`Failed to nack message: ${String(e?.message || e)}`);
+      }
     };
     // Enviar a DLQ vía DLX: nack con requeue=false evita publicar desde el mismo canal de consumo
     const nackToDlq = () => {
       try {
         const current = context?.getChannelRef?.();
         if (channel && originalMsg && current === channel) channel.nack(originalMsg, false, false);
-      } catch {}
+      } catch (e) {
+        this.logger.error(`Failed to nack message: ${String(e?.message || e)}`);
+      }
     };
 
     try {

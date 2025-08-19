@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { Redis } from 'ioredis';
 
@@ -9,6 +10,7 @@ export interface RedisLockOptions {
 }
 
 export class RedisLock {
+  private readonly logger = new Logger(RedisLock.name);
   private readonly redis: Redis;
   private readonly opts: Required<RedisLockOptions>;
 
@@ -81,8 +83,8 @@ export class RedisLock {
     } finally {
       try {
         await this.release(name, token);
-      } catch {
-        // best-effort release; avoid throwing in finally
+      } catch (e) {
+        this.logger.error(`Failed to release lock: ${String((e as Error).message)}`);
       }
     }
   }

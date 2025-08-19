@@ -62,7 +62,9 @@ export class ImportsRmqTopology implements OnModuleInit {
       try {
         await ch?.close();
         await conn?.close();
-      } catch {}
+      } catch (e) {
+        this.logger.error(`Failed to close RMQ connection: ${String((e as Error).message)}`);
+      }
     }
   }
 }
