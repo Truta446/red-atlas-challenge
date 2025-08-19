@@ -18,7 +18,7 @@ import { AuthGuard } from '../../auth/guards/auth.guard';
 import { ImportJob } from '../entities/import-job.entity';
 import { ImportsService } from '../services/imports.service';
 
-@ApiTags('imports')
+@ApiTags('Imports')
 @ApiBearerAuth()
 @Controller({ path: 'imports', version: '1' })
 @UseGuards(AuthGuard)

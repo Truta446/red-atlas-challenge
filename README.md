@@ -80,43 +80,22 @@ REFRESH_TOKEN_TTL=7d
 DEFAULT_TENANT=public
 ```
 
-### Levantar infraestructura + API (Docker)
-
-```bash
-# Levantar Postgres (con PostGIS), Redis y RabbitMQ y buildear imágenes
-docker compose up -d --build
-
-# Correr migraciones de la base
-npm run migration:run
-
-# Iniciar la API (watch mode)
-npm run start:api
-
-# Opcional: iniciar worker de importación CSV
-npm run start:worker:imports
-```
-
-Local (sin Docker): asegurate de tener Postgres+PostGIS, Redis y RabbitMQ corriendo y `.env` configurado, luego:
-
-```bash
-npm run build
-npm run migration:run
-npm run start:api
-```
-
 ---
 
 ## 2) Migraciones y seed
 
 - Generar/Ejecutar/Revertir migraciones:
+
   ```bash
   npm run migration:generate
   npm run migration:run
   npm run migration:revert
   ```
-- Poblar dataset (idempotente, volumen grande; compatible con Docker):
+
+- Poblar dataset (idempotente, volumen grande):
+
   ```bash
-  npm run seed:docker
+  npm run seed
   ```
 
 ---
@@ -357,11 +336,13 @@ Objetivo: mantener p95 estable con 1M+ registros (Properties, 2M+ Listings, 1.5M
 Observaciones:
 
 - Use `INCLUDE` (covering) para colunas de projeção frequente (PG14+):
+
   ```sql
   CREATE INDEX IF NOT EXISTS ix_properties_tenant_sector_type_price_inc
     ON properties (tenant_id, sector, type, price)
     INCLUDE (address);
   ```
+
 - Revisá planes de ejecución (`EXPLAIN (ANALYZE, BUFFERS)`) y ajustá selectividad.
 
 ### Particionamiento (cuándo adoptar)
@@ -430,9 +411,9 @@ Algunas vistas útiles para entender y comunicar el estado del sistema. Podés a
 ### Referencias externas
 
 - Diagrama de infraestructura en AWS (draw.io):
-  - https://drive.google.com/file/d/1KB9q8Y6ZfzaIH56PMOSC-jW-ri3SS3r4/view?usp=sharing
+  - <https://drive.google.com/file/d/1KB9q8Y6ZfzaIH56PMOSC-jW-ri3SS3r4/view?usp=sharing>
 - Swagger en producción:
-  - https://red-atlas.neuraltab.net/docs
+  - <https://red-atlas.neuraltab.net/docs>
 
 ---
 

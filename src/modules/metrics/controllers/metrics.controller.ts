@@ -4,7 +4,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../../auth/guards/auth.guard';
 import { MetricsService } from '../services/metrics.service';
 
-@ApiTags('metrics')
+@ApiTags('Metrics')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller({ path: 'metrics', version: '1' })

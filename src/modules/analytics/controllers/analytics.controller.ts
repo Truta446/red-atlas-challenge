@@ -5,7 +5,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AuthGuard } from '../../auth/guards/auth.guard';
 import { AnalyticsService } from '../services/analytics.service';
 
-@ApiTags('analytics')
+@ApiTags('Analytics')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller({ path: 'analytics', version: '1' })

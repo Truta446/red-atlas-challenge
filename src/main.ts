@@ -14,9 +14,7 @@ async function bootstrap() {
     new FastifyAdapter({ bodyLimit: 100 * 1024 * 1024 }), // 100MB
   );
 
-  // Accept text/csv as a valid content type and pass the raw stream through
   const fastify = app.getHttpAdapter().getInstance();
-  // Correlation-ID propagation
   fastify.addHook('onRequest', (req: any, reply: any, done: any) => {
     const incoming = req.headers['x-correlation-id'];
     const id = typeof incoming === 'string' && incoming.length > 0 ? incoming : req.id;
@@ -24,7 +22,6 @@ async function bootstrap() {
     done();
   });
   fastify.addContentTypeParser('text/csv', function (_req, payload, done) {
-    // Pass through raw stream to controller via req.body
     done(null, payload);
   });
 
@@ -52,7 +49,6 @@ async function bootstrap() {
   await app.register(compress, { threshold: 32768 });
   await app.register(fastifyCsrf);
 
-  // Swagger OpenAPI at /docs
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Red Atlas API')
     .setDescription('Real estate management API')
