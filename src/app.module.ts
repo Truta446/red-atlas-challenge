@@ -18,8 +18,8 @@ import { ListingsModule } from './modules/listings/listings.module';
 import { MetricsInterceptor } from './modules/metrics/interceptors/metrics.interceptor';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { PropertiesModule } from './modules/properties/properties.module';
-import { UsersModule } from './modules/users/users.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -89,6 +89,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
           return {
             ...common,
             url: databaseUrl,
+            ssl: { rejectUnauthorized: false },
           };
         }
 
@@ -100,6 +101,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
           username: config.get<string>('POSTGRES_USER', 'postgres'),
           password: config.get<string>('POSTGRES_PASSWORD', 'postgres'),
           database: config.get<string>('POSTGRES_DB', 'redatlas'),
+          ...(config.get<string>('PG_SSL') === 'true' ? { ssl: { rejectUnauthorized: false } } : {}),
         };
       },
     }),
