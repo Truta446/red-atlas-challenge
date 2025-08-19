@@ -427,6 +427,13 @@ Algunas vistas útiles para entender y comunicar el estado del sistema. Podés a
   - Diagrama: `docs/diagrams/imports-flow.puml` (PlantUML)
   - Ejemplo: ![Imports flow](docs/screenshots/imports-flow.jpeg)
 
+### Referencias externas
+
+- Diagrama de infraestructura en AWS (draw.io):
+  - https://drive.google.com/file/d/1KB9q8Y6ZfzaIH56PMOSC-jW-ri3SS3r4/view?usp=sharing
+- Swagger en producción:
+  - https://red-atlas.neuraltab.net/docs
+
 ---
 
 ## 12) Mejoras futuras
