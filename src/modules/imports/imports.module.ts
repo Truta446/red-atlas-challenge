@@ -21,20 +21,35 @@ import { ImportsRmqTopology } from './services/rmq.topology.provider';
       {
         name: 'IMPORTS_RMQ',
         inject: [ConfigService],
-        useFactory: (config: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [config.get<string>('RABBITMQ_URL') as string],
-            queue: 'imports.batch',
-            queueOptions: {
-              durable: true,
-              arguments: {
-                'x-dead-letter-exchange': '',
-                'x-dead-letter-routing-key': 'imports.retry.10s',
+        useFactory: (config: ConfigService) => {
+          // Prefer full URL; else build it from host + password (username defaults to admin)
+          let url = config.get<string>('RABBITMQ_URL');
+          if (!url) {
+            const host = config.get<string>('RABBITMQ_HOST');
+            const user = config.get<string>('RABBITMQ_USER', 'admin');
+            const pass = config.get<string>('RABBITMQ_PASSWORD');
+            if (host && pass) {
+              const hasScheme = /^amqp(s)?:\/\//i.test(host);
+              const base = hasScheme ? host : `amqps://${host}`;
+              url = base.replace(/^(amqp(s)?:\/\/)/i, `$1${encodeURIComponent(user)}:${encodeURIComponent(pass)}@`);
+            }
+          }
+
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: url ? [url] : [],
+              queue: 'imports.batch',
+              queueOptions: {
+                durable: true,
+                arguments: {
+                  'x-dead-letter-exchange': '',
+                  'x-dead-letter-routing-key': 'imports.retry.10s',
+                },
               },
             },
-          },
-        }),
+          };
+        },
       },
     ]),
   ],
