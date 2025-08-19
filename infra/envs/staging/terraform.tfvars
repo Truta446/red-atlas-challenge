@@ -1,0 +1,8 @@
+region  = "us-east-1"
+project = "red-atlas"
+env     = "staging"
+route53_zone_id = "Z09092022H0T46GMNRK2Z"
+domain          = "red-atlas.neuraltab.net"
+db_username = "postgres"
+db_password = "8e0ZP2bI0We0"
+certificate_arn = "arn:aws:acm:us-east-1:975050172385:certificate/6d2c52bd-75f3-4f63-a88f-d67f64a14450"

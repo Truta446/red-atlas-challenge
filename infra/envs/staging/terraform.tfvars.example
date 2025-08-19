@@ -1,0 +1,10 @@
+region  = "us-east-1"
+project = "red-atlas"
+env     = "staging"
+
+# Dominio raíz ya hospedado en Route53
+route53_zone_id = "Z1234567890EXAMPLE"
+domain          = "api.tudominio.com"
+
+db_username = "postgres"
+db_password = "cambia-esto"

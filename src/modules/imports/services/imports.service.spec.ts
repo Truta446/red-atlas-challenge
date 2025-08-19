@@ -74,7 +74,7 @@ describe('ImportsService', () => {
     expect(updateQB.update).not.toHaveBeenCalled();
   });
 
-  it('publishStream emits when batch reaches 1000 rows and increments totalEstimated accordingly', async () => {
+  it('publishStream emits when batch reaches 100 rows and increments totalEstimated accordingly', async () => {
     const header = 'address,sector,type,price,latitude,longitude\n';
     const rows = Array.from({ length: 1001 }, (_, i) => `A${i},S,T,123,1,2\n`).join('');
     const stream = Readable.from([header, rows]);
@@ -84,13 +84,14 @@ describe('ImportsService', () => {
 
     await (service as any).publishStream('job-1000', 'tenant-a', stream);
 
-    // One emit for first 1000, one emit for the remaining 1
-    expect(rmq.emit).toHaveBeenCalledTimes(2);
+    // 1001 rows with batchSize=100 -> 10 emits of 100, plus 1 emit with remaining 1 = 11
+    expect(rmq.emit).toHaveBeenCalledTimes(11);
     const topics = (rmq.emit as jest.Mock).mock.calls.map((c: any[]) => c[0]);
     expect(topics.every((t: string) => t === 'imports.batch')).toBe(true);
-    // increments called with 1000 and then 1
-    expect(jobs.increment).toHaveBeenNthCalledWith(1, { id: 'job-1000' }, 'totalEstimated', 1000);
-    expect(jobs.increment).toHaveBeenNthCalledWith(2, { id: 'job-1000' }, 'totalEstimated', 1);
+    // increments called with 100 (for first 10 batches) and then 1
+    expect(jobs.increment).toHaveBeenNthCalledWith(1, { id: 'job-1000' }, 'totalEstimated', 100);
+    expect(jobs.increment).toHaveBeenNthCalledWith(10, { id: 'job-1000' }, 'totalEstimated', 100);
+    expect(jobs.increment).toHaveBeenNthCalledWith(11, { id: 'job-1000' }, 'totalEstimated', 1);
     // published flag set at the end
     expect(jobs.update).toHaveBeenCalledWith({ id: 'job-1000' }, { published: true });
   });
