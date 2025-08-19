@@ -9,7 +9,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 100 * 1024 * 1024 }), // 100MB
+  );
 
   // Accept text/csv as a valid content type and pass the raw stream through
   const fastify = app.getHttpAdapter().getInstance();
@@ -21,6 +24,7 @@ async function bootstrap() {
     done();
   });
   fastify.addContentTypeParser('text/csv', function (_req, payload, done) {
+    // Pass through raw stream to controller via req.body
     done(null, payload);
   });
 

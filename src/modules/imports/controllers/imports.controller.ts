@@ -41,7 +41,7 @@ export class ImportsController {
       throw new HttpException('Content-Type must be text/csv', HttpStatus.UNSUPPORTED_MEDIA_TYPE);
     }
 
-    const job = await this.service.enqueueImport(user.tenantId, idempotencyKey, req.raw);
+    const job = await this.service.enqueueImport(user.tenantId, idempotencyKey, req.body);
     return { id: job.id, status: job.status };
   }
 

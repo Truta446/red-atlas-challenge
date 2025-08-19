@@ -23,6 +23,7 @@ RUN npm run build:full
 FROM node:22-alpine AS prod
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache curl
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist /app/dist
