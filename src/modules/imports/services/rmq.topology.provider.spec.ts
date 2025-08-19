@@ -53,8 +53,8 @@ describe('ImportsRmqTopology', () => {
       providers: [ImportsRmqTopology, { provide: ConfigService, useValue: { get: () => 'amqp://localhost' } }],
     }).compile();
 
-    const topo = moduleRef.get(ImportsRmqTopology) as any;
-    const spy = jest.spyOn(topo['logger'], 'error').mockImplementation(() => {});
+    const topo = moduleRef.get(ImportsRmqTopology);
+    const spy = jest.spyOn(topo.logger, 'error').mockImplementation(() => undefined);
     await topo.onModuleInit();
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('Failed to assert RMQ topology'));
   });
@@ -72,8 +72,8 @@ describe('ImportsRmqTopology', () => {
       providers: [ImportsRmqTopology, { provide: ConfigService, useValue: { get: () => 'amqp://local' } }],
     }).compile();
 
-    const topo = moduleRef.get(ImportsRmqTopology) as any;
-    const spy = jest.spyOn(topo['logger'], 'error').mockImplementation(() => {});
+    const topo = moduleRef.get(ImportsRmqTopology);
+    const spy = jest.spyOn(topo.logger, 'error').mockImplementation(() => undefined);
     await topo.onModuleInit();
     // At least one close error should be logged
     expect(spy.mock.calls.some((c) => String(c[0]).includes('Failed to close RMQ connection'))).toBe(true);

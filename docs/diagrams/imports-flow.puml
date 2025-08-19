@@ -1,0 +1,88 @@
+@startuml imports-flow
+' Imports route and async processing flow
+' Source: src/modules/imports/controllers/imports.controller.ts
+'         src/modules/imports/services/imports.service.ts
+'         src/modules/imports/controllers/imports.consumer.ts
+'         src/imports.worker.ts
+
+title Imports flow (POST /v1/imports, GET /v1/imports/:id, async worker)
+
+actor Client
+participant "API (NestJS)" as API
+participant "AuthGuard" as Auth
+participant "ImportsController" as Ctrl
+participant "ImportsService" as Svc
+queue "RabbitMQ\nqueue: imports.batch" as RMQ
+participant "ImportsWorker\n(ImportsConsumer)" as Worker
+collections "Redis (RedisLock)" as Redis
+participant "MetricsService" as Metrics
+database "PostgreSQL\n(ImportJob, Property, ImportProcessedBatch)" as DB
+
+== Submit import ==
+Client -> API: POST /v1/imports\nHeaders: Idempotency-Key\nContent-Type: text/csv\nBody: CSV stream
+API -> Auth: canActivate()
+Auth --> API: user { tenantId }
+API -> Ctrl: create(req, idempotencyKey, user)
+Ctrl -> Ctrl: validate headers
+Ctrl -> Svc: enqueueImport(tenantId, key, stream)
+Svc -> DB: findOne(ImportJob by tenantId+idempotencyKey)
+alt Job already exists (idempotent)
+  DB --> Svc: existing job
+else New job
+  Svc -> DB: save(ImportJob status=processing, processed=0,succeeded=0,failed=0)
+  activate Svc
+  Svc -> Svc: publishStream(jobId, tenantId, stream)
+  loop read CSV lines
+    Svc -> Svc: parseCsvLine/mapRow/validateRow
+    alt invalid row
+      Svc -> DB: update(processed++, failed++)
+    else valid row
+      Svc -> RMQ: emit 'imports.batch' { jobId, tenantId, seq, rows(batchSize≈100) }
+      Svc -> DB: increment(totalEstimated, +batchSize)
+    end
+  end
+  Svc -> DB: update(published=true)
+  deactivate Svc
+end
+Svc --> Ctrl: ImportJob { id, status }
+Ctrl --> Client: 202 Accepted { id, status }
+
+== Async batch processing ==
+RMQ -> Worker: ImportBatchMessage { jobId, tenantId, seq, rows }
+Worker -> Redis: withLock("imports:job:{jobId}")
+alt lock ok (or fallback without lock)
+  Worker -> Svc: flushBatch(tenantId, rows)
+  Svc -> DB: insert Property[] .orIgnore().returning(id)
+  Svc -> DB: update Property set valuation=price (inserted ids)
+  Svc --> Worker: { ok, ko }
+  Worker -> Metrics: inc batchesProcessed{result="ok"}, rowsOk/rowsKo
+  Worker -> DB: UPDATE imports processed+=rows.length,\n               succeeded+=ok, failed+=ko
+  Worker -> DB: save(ImportProcessedBatch { jobId, seq })
+  Worker -> DB: findOne ImportJob by id
+  alt job.published && processed >= totalEstimated
+    Worker -> DB: update(status='completed')
+  end
+  Worker -> RMQ: ack
+else processing error
+  Worker -> Worker: read x-death to count retries
+  alt retries >= 5
+    Worker -> Metrics: inc batchesProcessed{result="dlq"}
+    Worker -> RMQ: nack(requeue=false) to DLQ
+  else
+    Worker -> Metrics: inc batchesProcessed{result="retry"}
+    Worker -> RMQ: nack(requeue=false) to retry (TTL)
+  end
+end
+
+== Check status ==
+Client -> API: GET /v1/imports/{id}
+API -> Auth: canActivate()
+Auth --> API: user { tenantId }
+API -> Ctrl: getOne(id, user)
+Ctrl -> Svc: getJob(tenantId, id)
+Svc -> DB: findOne ImportJob
+DB --> Svc: ImportJob
+Svc --> Ctrl: ImportJob
+Ctrl --> Client: 200 OK ImportJob
+
+@enduml

@@ -210,4 +210,18 @@ describe('ListingsService', () => {
     );
     expect(qb.addOrderBy).toHaveBeenNthCalledWith(2, 'l.createdAt', 'DESC');
   });
+
+  it('findMany uses leftJoinAndSelect and addSelect when available', async () => {
+    const qb = createQB({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+    });
+    qb.getMany.mockResolvedValue([{ id: 'id1' }] as any);
+    (listingRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    await service.findMany({} as any, tenantId);
+
+    expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('l.property', 'p');
+    expect(qb.addSelect).toHaveBeenCalledWith(['p.id', 'p.address', 'p.sector', 'p.type']);
+  });
 });

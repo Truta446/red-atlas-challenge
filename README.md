@@ -409,6 +409,36 @@ Observaciones:
 
 ---
 
-## 11) Licencia
+## 11) Capturas de pantalla
+
+Algunas vistas útiles para entender y comunicar el estado del sistema. Podés agregar tus imágenes en `docs/screenshots/` y enlazarlas acá.
+
+- Instalación de librerías (entorno local):
+  - Ejemplo: ![Install libs](docs/screenshots/install-libs.png)
+- Pruebas end-to-end (E2E):
+  - Ejemplo: ![E2E tests](docs/screenshots/e2e-tests.png)
+- Pruebas unitarias:
+  - Módulos/servicios: ![Unit tests 1](docs/screenshots/unit-test-1.png)
+  - Cobertura/summary: ![Unit tests 2](docs/screenshots/unit-test-2.png)
+- Importaciones (flujo):
+  - Diagrama: `docs/diagrams/imports-flow.puml` (PlantUML)
+  - Ejemplo: ![Imports flow](docs/screenshots/imports-flow.jpeg)
+
+---
+
+## 12) Mejoras futuras
+
+- Internacionalización de respuestas (i18n):
+  - Soporte multilenguaje para mensajes de error/validación y textos de la API (por tenant/locale).
+  - Integración con `@nestjs/i18n` y negociación de idioma vía header `Accept-Language`.
+- Observabilidad con Grafana y dashboards:
+  - Provisionar dashboards (JSON) para latencia p95/p99, tasa de errores, colas de importación, y uso de caché.
+  - Integrar Prometheus (ya expuesto en `/v1/metrics`) como datasource.
+- Alertas (Prometheus Alertmanager) para caídas de SLO/disponibilidad y backlog anormal en colas.
+- Feature flags para togglear funcionalidades (p.ej. geo‑ordenamiento KNN) por tenant.
+
+---
+
+## 13) Licencia
 
 MIT
