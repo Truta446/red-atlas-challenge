@@ -66,29 +66,42 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('POSTGRES_HOST', 'localhost'),
-        port: Number(config.get<string>('POSTGRES_PORT', '5432')),
-        username: config.get<string>('POSTGRES_USER', 'postgres'),
-        password: config.get<string>('POSTGRES_PASSWORD', 'postgres'),
-        database: config.get<string>('POSTGRES_DB', 'redatlas'),
-        autoLoadEntities: true,
-        synchronize: false,
-        logging: false,
-        // Pool tuning: keep per-process pool small; add safe timeouts and recycling
-        extra: {
-          // pg-pool options
-          max: Number(config.get<string>('PG_POOL_MAX', '10')),
-          idleTimeoutMillis: Number(config.get<string>('PG_IDLE_TIMEOUT_MS', '30000')),
-          connectionTimeoutMillis: Number(config.get<string>('PG_CONN_TIMEOUT_MS', '20000')),
-          // recycle connections after N uses to avoid long-lived problematic sessions
-          maxUses: Number(config.get<string>('PG_MAX_USES', '5000')),
-          // server parameters (supported by node-postgres): milliseconds
-          statement_timeout: Number(config.get<string>('PG_STATEMENT_TIMEOUT_MS', '5000')),
-          idle_in_transaction_session_timeout: Number(config.get<string>('PG_IDLE_TX_TIMEOUT_MS', '10000')),
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL');
+        const common = {
+          type: 'postgres' as const,
+          autoLoadEntities: true,
+          synchronize: false,
+          logging: false,
+          // Pool tuning: keep per-process pool small; add safe timeouts and recycling
+          extra: {
+            max: Number(config.get<string>('PG_POOL_MAX', '10')),
+            idleTimeoutMillis: Number(config.get<string>('PG_IDLE_TIMEOUT_MS', '30000')),
+            connectionTimeoutMillis: Number(config.get<string>('PG_CONN_TIMEOUT_MS', '20000')),
+            maxUses: Number(config.get<string>('PG_MAX_USES', '5000')),
+            statement_timeout: Number(config.get<string>('PG_STATEMENT_TIMEOUT_MS', '5000')),
+            idle_in_transaction_session_timeout: Number(config.get<string>('PG_IDLE_TX_TIMEOUT_MS', '10000')),
+          },
+        };
+
+        if (databaseUrl && databaseUrl.length > 0) {
+          // Preferí usar DATABASE_URL (inyectada desde Secrets Manager en ECS)
+          return {
+            ...common,
+            url: databaseUrl,
+          };
+        }
+
+        // Fallback a variables discretas (útil en local)
+        return {
+          ...common,
+          host: config.get<string>('POSTGRES_HOST', 'localhost'),
+          port: Number(config.get<string>('POSTGRES_PORT', '5432')),
+          username: config.get<string>('POSTGRES_USER', 'postgres'),
+          password: config.get<string>('POSTGRES_PASSWORD', 'postgres'),
+          database: config.get<string>('POSTGRES_DB', 'redatlas'),
+        };
+      },
     }),
     CacheModule.registerAsync({
       isGlobal: true,
