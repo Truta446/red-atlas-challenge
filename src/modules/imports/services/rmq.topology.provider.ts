@@ -9,9 +9,20 @@ export class ImportsRmqTopology implements OnModuleInit {
   @Inject(ConfigService) private readonly config: ConfigService;
 
   public async onModuleInit(): Promise<void> {
-    const url = this.config.get<string>('RABBITMQ_URL');
+    // Prefer full URL; else build it from host + password (username defaults to admin)
+    let url = this.config.get<string>('RABBITMQ_URL');
     if (!url) {
-      this.logger.warn('RABBITMQ_URL not set; skipping RMQ topology assertion');
+      const host = this.config.get<string>('RABBITMQ_HOST');
+      const user = this.config.get<string>('RABBITMQ_USER', 'admin');
+      const pass = this.config.get<string>('RABBITMQ_PASSWORD');
+      if (host && pass) {
+        const hasScheme = /^amqp(s)?:\/\//i.test(host);
+        const base = hasScheme ? host : `amqps://${host}`;
+        url = base.replace(/^(amqp(s)?:\/\/)/i, `$1${encodeURIComponent(user)}:${encodeURIComponent(pass)}@`);
+      }
+    }
+    if (!url) {
+      this.logger.warn('RABBITMQ_URL not set and could not construct from RABBITMQ_HOST/RABBITMQ_PASSWORD; skipping RMQ topology assertion');
       return;
     }
 

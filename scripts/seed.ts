@@ -17,6 +17,12 @@ import { DataSource, QueryRunner } from 'typeorm';
 
 dotenv.config();
 
+// SSL options (useful for AWS RDS)
+const sslEnabled =
+  (process.env.POSTGRES_SSL || '').toLowerCase() === 'true' ||
+  (process.env.PGSSLMODE || '').toLowerCase() === 'require';
+const sslRejectUnauthorized = (process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED || 'true').toLowerCase() === 'true';
+
 const tenant = process.env.DEFAULT_TENANT || 'public';
 const PROPERTIES_TARGET = 100_000;
 const LISTINGS_TARGET = 200_000;
@@ -75,6 +81,7 @@ async function createDataSource(): Promise<DataSource> {
     database: process.env.POSTGRES_DB || 'redatlas',
     synchronize: false,
     logging: ['error'],
+    ssl: sslEnabled ? { rejectUnauthorized: sslRejectUnauthorized } : false,
   });
   await ds.initialize();
   return ds;
