@@ -1,0 +1,82 @@
+name: Deploy to AWS (staging)
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'infra/**'
+      - 'README.md'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT: red-atlas
+  ENV: staging
+  CLUSTER: red-atlas-staging
+  API_SERVICE: red-atlas-staging-svc
+  WORKER_SERVICE: red-atlas-staging-worker
+  ECR_REPO: red-atlas-api
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract metadata (tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Force new deployment (API)
+        run: |
+          aws ecs update-service \
+            --cluster ${CLUSTER} \
+            --service ${API_SERVICE} \
+            --force-new-deployment \
+            --region ${AWS_REGION}
+
+      - name: Force new deployment (Worker)
+        run: |
+          aws ecs update-service \
+            --cluster ${CLUSTER} \
+            --service ${WORKER_SERVICE} \
+            --force-new-deployment \
+            --region ${AWS_REGION}
